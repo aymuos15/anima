@@ -27,7 +27,10 @@ async function pickStore() {
     // serverless bundle includes pg.
     const [{ postgresStore }, pg] = await Promise.all([import('@animahealth/adk/stores/postgres'), import('pg')])
     // Supabase's pooler chain is signed by Supabase's own root CA, so verify against it explicitly.
-    return postgresStore({ pool: new pg.default.Pool({ connectionString: process.env.DATABASE_URL, max: 3, ssl: { ca: SUPABASE_CA } }) })
+    // pg lets sslmode in the URL override the ssl option, so drop it and configure TLS explicitly.
+    const url = new URL(process.env.DATABASE_URL)
+    url.searchParams.delete('sslmode')
+    return postgresStore({ pool: new pg.default.Pool({ connectionString: url.toString(), max: 3, ssl: { ca: SUPABASE_CA } }) })
   }
   const { sqliteStore } = await import('@animahealth/adk/stores/sqlite')
   return sqliteStore(join(here, 'sessions.db'))
