@@ -198,6 +198,11 @@
     margin-bottom: 8px;
   }
   .button:active { box-shadow: none; transform: translateY(4px); }
+  .operation-toggle { margin-bottom: 24px; }
+  .operation-toggle::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-left: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-3px) rotate(45deg); }
+  .operation-toggle[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
+  .operation-details[hidden] { display: none; }
+  .operation-details h2:first-child { margin-top: 0; }
   .button--secondary { background: var(--nhs-white); color: var(--nhs-blue); border-color: var(--nhs-blue); box-shadow: 0 4px 0 var(--nhs-dark-blue); }
 
   /* views */

@@ -109,7 +109,10 @@
   <main class="content view" id="view-pathway">
     <a class="back-link" href="#" data-go="home">Back to home</a>
     <p class="caption" id="pw-caption"></p>
-    <h1 id="pw-title"></h1>
+    <h1>Your care</h1>
+    <button class="button button--secondary operation-toggle" type="button" id="operation-toggle" aria-expanded="false" aria-controls="operation-details">Upcoming operation</button>
+    <div class="operation-details" id="operation-details" hidden>
+    <h2 id="pw-title"></h2>
     <p class="lede" id="lede-text"></p>
     <div class="latest" id="latest" role="button" tabindex="0">
       <p class="from">Your care team</p>
@@ -125,6 +128,7 @@
       <h2>Your medicines</h2>
       <ol class="steps" id="rx-steps"></ol>
       <dl class="summary-list" id="rx-details" style="margin-top:20px"></dl>
+    </div>
     </div>
     <div class="card">
       <h2>Recent activity</h2>
@@ -289,6 +293,8 @@
   document.querySelectorAll('.bottom-nav a[data-view]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); a.blur(); showView(a.dataset.view); }); });
   document.querySelectorAll('[data-go]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); showView(a.dataset.go); }); });
   banner.addEventListener('click', function () { hideBanner(); showView('messages'); });
+  var opToggle = $('operation-toggle'), opDetails = $('operation-details');
+  opToggle.addEventListener('click', function () { var open = opDetails.hidden; opDetails.hidden = !open; opToggle.setAttribute('aria-expanded', open ? 'true' : 'false'); });
   latest.addEventListener('click', function () { showView('messages'); });
   latest.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showView('messages'); } });
   function hideBanner() { banner.removeAttribute('data-show'); }
