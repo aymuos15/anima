@@ -77,7 +77,7 @@ export function writeTools(app: typeof App) {
     schema: z.object({ patientId: z.string(), panelId: z.enum(['fbc', 'ue', 'hba1c', 'lft', 'crp', 'lipids']), priority: z.enum(['routine', 'urgent']).default('routine'), collection: z.enum(['now', 'next-round']).default('next-round'), clinicalDetails: z.string() }),
     yieldSchema: approval,
     finalize: async (ctx) => (ctx.input?.approved
-      ? run('gp', { type: 'order_test', patientId: ctx.args.patientId, bloodTestOrder: { panel: ctx.args.panelId.toUpperCase(), specimen: 'Blood', panelId: ctx.args.panelId, priority: ctx.args.priority, collection: ctx.args.collection, clinicalDetails: ctx.args.clinicalDetails } })
+      ? run('gp', { type: 'order_test', patientId: ctx.args.patientId, title: ctx.args.panelId.toUpperCase(), bloodTestOrder: { panel: ctx.args.panelId.toUpperCase(), specimen: 'Blood', panelId: ctx.args.panelId, priority: ctx.args.priority, collection: ctx.args.collection, clinicalDetails: ctx.args.clinicalDetails } })
       : declined(ctx.input?.note)),
   })
 
