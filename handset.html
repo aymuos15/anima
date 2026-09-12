@@ -26,6 +26,7 @@ body{margin:0;background:#eef3f7;color:#172b40;font-family:Arial,sans-serif}.han
 const $ = id => document.getElementById(id);
 let state, peer, channel, stream, connected = false, busy = false, muted = false, cursor = 0, polling = false, audioUrl;
 let activePatient = '', activeRun = '', generation = 0;
+let preparedSpeech;
 const phoneRelay = new URLSearchParams(location.search).get('relay') === 'phone';
 let conversationStarted = !phoneRelay;
 const requestedPatient = new URLSearchParams(location.search).get('patient');
@@ -48,17 +49,18 @@ function render() {
   $('transcript').scrollTop = $('transcript').scrollHeight;
 }
 async function speak(index, turn) {
-  busy = true; mic(); status('Pre-op team speaking…');
+  busy = true; mic(); status('Preparing approved audio…');
   console.info('[voice] approved speech requested', index);
-  const response = await api('/api/demo/voice/speak', {patientId:activePatient,transcriptIndex:index});
-  const blob = await response.blob();
+  const cached = preparedSpeech?.index === index && preparedSpeech?.text === state.patients[activePatient].transcript[index].text ? preparedSpeech : undefined;
+  preparedSpeech = undefined;
+  const blob = cached?.blob || await (await api('/api/demo/voice/speak', {patientId:activePatient,transcriptIndex:index})).blob();
   if (!connected || turn !== generation) return;
   if (audioUrl) URL.revokeObjectURL(audioUrl);
   audioUrl = URL.createObjectURL(blob); $('speech').src = audioUrl;
   await new Promise((resolve,reject) => {
     $('speech').onended = event => { console.info(event ? '[voice] approved speech ended' : '[voice] speech cancelled', index, $('speech').currentTime); resolve(); };
     $('speech').onerror = () => reject(new Error('Audio playback failed'));
-    $('speech').play().then(() => console.info('[voice] approved speech playing', index)).catch(reject);
+    $('speech').play().then(() => { status('Pre-op team speaking…'); console.info('[voice] approved speech playing', index); }).catch(reject);
   });
 }
 async function refresh(speakNew = true) {
@@ -93,6 +95,7 @@ async function inbound(text) {
 }
 function end() {
   generation++; connected = false; busy = false;
+  preparedSpeech = undefined;
   conversationStarted = !phoneRelay;
   $('speech').pause(); $('speech').onended?.();
   channel?.close(); peer?.close(); stream?.getTracks().forEach(track => track.stop());
@@ -144,7 +147,23 @@ $('answer').onclick = async () => {
       $('callLabel').textContent = phoneRelay ? 'Phone relay · Audio ready' : 'Browser voice · Connected';
       const entries = state.patients[activePatient].transcript;
       cursor = entries.findLastIndex(entry => entry.from === 'agent'); if (cursor < 0) cursor = entries.length;
-      if (phoneRelay) { $('begin').hidden = false; status('Connect the phone call, then start conversation.'); }
+      if (phoneRelay) {
+        const turn = generation;
+        status('Preparing approved greeting. Wait before placing the call…');
+        $('callLabel').textContent = 'Phone relay · Preparing greeting';
+        try {
+          if (cursor < entries.length) {
+            const text = entries[cursor].text;
+            const blob = await (await api('/api/demo/voice/speak', {patientId:activePatient,transcriptIndex:cursor})).blob();
+            if (!connected || turn !== generation) return;
+            preparedSpeech = {index:cursor,text,blob};
+            console.info('[voice] approved greeting buffered', cursor);
+          }
+          $('begin').hidden = false;
+          $('callLabel').textContent = 'Phone relay · Audio ready';
+          status('Greeting ready. Connect the phone call, then start conversation.');
+        } catch (error) { if (turn === generation) { end(); status(error.message); } }
+      }
       else await refresh();
     };
     peer.onconnectionstatechange = () => { console.info('[voice] peer connection', peer.connectionState); if (['failed','disconnected'].includes(peer.connectionState)) { end(); status('Audio disconnected. Please reconnect.'); } };
