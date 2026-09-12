@@ -1,0 +1,1251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your pathway - NHS</title>
+<style>
+  :root {
+    --nhs-blue: #005EB8;
+    --nhs-dark-blue: #003087;
+    --nhs-text: #212B32;
+    --nhs-secondary-text: #4C6272;
+    --nhs-pale-grey: #F0F4F5;
+    --nhs-border: #D8DDE0;
+    --nhs-yellow: #FFEB3B;
+    --nhs-green: #007F3B;
+    --nhs-green-dark: #00401E;
+    --nhs-orange: #ED8B00;
+    --nhs-red: #D5281B;
+    --nhs-white: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: #C9D1D4;
+    color: var(--nhs-text);
+    font-family: "Frutiger W01", Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--nhs-blue); }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+    background: var(--nhs-yellow);
+    box-shadow: 0 -2px var(--nhs-yellow), 0 4px var(--nhs-text);
+    color: var(--nhs-text);
+    outline: 4px solid transparent;
+    text-decoration: none;
+  }
+
+  .phone {
+    width: 100%;
+    max-width: 420px;
+    min-height: 100vh;
+    background: var(--nhs-pale-grey);
+    position: relative;
+  }
+
+  /* NHS header */
+  .nhs-header {
+    background: var(--nhs-blue);
+    color: var(--nhs-white);
+    padding: 16px 16px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .nhs-logo {
+    display: inline-block;
+    width: 80px;
+    height: 32px;
+    vertical-align: middle;
+  }
+
+  .nhs-service {
+    display: block;
+    font-size: 18px;
+    font-weight: 400;
+    margin-top: 8px;
+  }
+
+  .content {
+    padding: 16px 16px 96px;
+  }
+
+  .back-link {
+    display: inline-block;
+    font-size: 16px;
+    margin: 0 0 16px;
+    padding-left: 14px;
+    position: relative;
+    text-decoration: underline;
+  }
+
+  .back-link::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 7px;
+    height: 7px;
+    border-left: 2px solid var(--nhs-blue);
+    border-bottom: 2px solid var(--nhs-blue);
+    transform: rotate(45deg);
+  }
+
+  .caption {
+    color: var(--nhs-secondary-text);
+    font-size: 16px;
+    margin: 0 0 4px;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.25;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+
+  h2 {
+    font-size: 22px;
+    line-height: 1.3;
+    font-weight: 700;
+    margin: 0 0 16px;
+  }
+
+  p { margin: 0 0 16px; }
+
+  .lede {
+    font-size: 18px;
+    margin-bottom: 24px;
+  }
+
+  /* tag */
+  .tag {
+    display: inline-block;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .tag--orange { background: #FFF4E5; color: #6E3619; border-color: #6E3619; }
+  .tag--blue   { background: #E8EDF4; color: #003078; border-color: #003078; }
+  .tag--green  { background: #E8F5EE; color: #00401E; border-color: #00401E; }
+  .tag--grey   { background: #F0F4F5; color: #4C6272; border-color: #4C6272; }
+  .tag--red    { background: #FBE9E7; color: #6B0E0E; border-color: #6B0E0E; }
+
+  /* card */
+  .card {
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    margin: 0 0 24px;
+    padding: 24px;
+  }
+
+  .card h2 { margin-bottom: 16px; }
+
+  /* pathway steps */
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    position: relative;
+    padding-bottom: 24px;
+  }
+
+  .step:last-child { padding-bottom: 0; }
+
+  .step .rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  .step .marker {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid var(--nhs-border);
+    background: var(--nhs-white);
+    position: relative;
+  }
+
+  .step .line {
+    width: 4px;
+    flex: 1;
+    background: var(--nhs-border);
+    margin-top: 4px;
+  }
+
+  .step--done .marker {
+    background: var(--nhs-blue);
+    border-color: var(--nhs-blue);
+  }
+
+  .step--done .marker::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border-right: 3px solid var(--nhs-white);
+    border-bottom: 3px solid var(--nhs-white);
+    transform: rotate(45deg);
+  }
+
+  .step--done .line { background: var(--nhs-blue); }
+
+  .step--current .marker {
+    background: var(--nhs-orange);
+    border-color: var(--nhs-orange);
+  }
+
+  .step .name {
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.3;
+  }
+
+  .step .detail {
+    color: var(--nhs-secondary-text);
+    font-size: 16px;
+    margin: 2px 0 0;
+  }
+
+  .step--pending .name { color: var(--nhs-secondary-text); font-weight: 400; }
+
+  /* warning callout */
+  .warning-callout {
+    background: var(--nhs-white);
+    border: 4px solid var(--nhs-yellow);
+    margin: 0 0 24px;
+    padding: 0 24px 24px;
+  }
+
+  .warning-callout h2 {
+    background: var(--nhs-yellow);
+    color: var(--nhs-text);
+    display: inline-block;
+    font-size: 20px;
+    margin: 0 0 16px -28px;
+    padding: 8px 32px 8px 28px;
+    position: relative;
+    top: -4px;
+  }
+
+  .warning-callout p:last-child { margin-bottom: 0; }
+
+  /* summary list */
+  .summary-list {
+    margin: 0;
+    width: 100%;
+  }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--nhs-border);
+  }
+
+  .summary-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .summary-row:first-child { padding-top: 0; }
+
+  .summary-row dt { font-weight: 700; margin: 0; }
+  .summary-row dd { margin: 0; text-align: right; color: var(--nhs-secondary-text); }
+  .summary-row dd.stat { color: var(--nhs-text); font-weight: 700; font-size: 20px; }
+
+  /* timeline */
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .timeline li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--nhs-border);
+  }
+
+  .timeline li:first-child { padding-top: 0; }
+  .timeline li:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .timeline .event { margin: 0; }
+  .timeline .meta {
+    color: var(--nhs-secondary-text);
+    font-size: 14px;
+    margin: 2px 0 0;
+  }
+
+  /* inset text */
+  .inset-text {
+    border-left: 8px solid var(--nhs-blue);
+    background: var(--nhs-white);
+    padding: 16px 16px 16px 20px;
+    margin: 0 0 24px;
+    font-size: 16px;
+  }
+
+  .inset-text p:last-child { margin-bottom: 0; }
+
+  /* button */
+  .button {
+    display: block;
+    width: 100%;
+    background: var(--nhs-green);
+    color: var(--nhs-white);
+    border: 2px solid transparent;
+    border-radius: 4px;
+    box-shadow: 0 4px 0 var(--nhs-green-dark);
+    font: inherit;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 12px 16px;
+    text-align: center;
+    cursor: pointer;
+    margin-bottom: 8px;
+  }
+
+  .button:active {
+    box-shadow: none;
+    transform: translateY(4px);
+  }
+
+  .button--secondary {
+    background: var(--nhs-white);
+    color: var(--nhs-blue);
+    border-color: var(--nhs-blue);
+    box-shadow: 0 4px 0 var(--nhs-dark-blue);
+  }
+
+  .button--secondary:focus-visible { background: var(--nhs-yellow); color: var(--nhs-text); }
+
+  /* bottom nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 420px;
+    background: var(--nhs-white);
+    border-top: 1px solid var(--nhs-border);
+    display: flex;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+
+  .bottom-nav a {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+    color: var(--nhs-secondary-text);
+    padding: 4px 0;
+  }
+
+  .bottom-nav svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    margin: 0 auto 4px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .bottom-nav a[aria-current] {
+    color: var(--nhs-blue);
+    font-weight: 700;
+  }
+
+  /* views */
+  .view { display: none; }
+  .view[data-active] { display: block; }
+
+  .bottom-nav { display: none; }
+  .phone[data-logged-in] .bottom-nav { display: flex; }
+
+  /* home alerts (NHS care-card style) */
+  .alerts { display: flex; flex-direction: column; gap: 16px; margin: 0 0 24px; }
+
+  .alert {
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    animation: pop 260ms ease-out;
+  }
+
+  .alert .alert-head {
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--nhs-white);
+    background: var(--nhs-blue);
+  }
+
+  .alert--action .alert-head { background: var(--nhs-blue); }
+  .alert--action { border-color: var(--nhs-blue); border-width: 1px 1px 4px; }
+  .alert--info .alert-head { background: var(--nhs-pale-grey); color: var(--nhs-text); }
+
+  .alert .alert-body { padding: 16px; }
+  .alert .alert-body p { margin: 0 0 12px; }
+  .alert .alert-body p:last-child { margin-bottom: 0; }
+
+  .alert .alert-link {
+    font-weight: 700;
+    text-decoration: underline;
+    color: var(--nhs-blue);
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .alert .stamp { font-size: 13px; color: var(--nhs-secondary-text); }
+
+  .empty {
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    padding: 16px;
+    color: var(--nhs-secondary-text);
+    margin: 0 0 24px;
+  }
+
+  .quick { list-style: none; margin: 0; padding: 0; }
+  .quick li { border-bottom: 1px solid var(--nhs-border); }
+  .quick li:last-child { border-bottom: none; }
+  .quick a {
+    display: block;
+    padding: 12px 0;
+    font-weight: 700;
+    text-decoration: underline;
+  }
+
+  /* login */
+  .login { padding: 24px 16px 40px; }
+  .login h1 { font-size: 28px; margin-bottom: 8px; }
+  .login .intro { color: var(--nhs-secondary-text); margin-bottom: 24px; }
+
+  .field { margin: 0 0 20px; }
+  .field label {
+    display: block;
+    font-weight: 700;
+    margin: 0 0 6px;
+  }
+  .field .hint {
+    color: var(--nhs-secondary-text);
+    font-size: 14px;
+    margin: 0 0 8px;
+  }
+  .field input {
+    display: block;
+    width: 100%;
+    height: 44px;
+    padding: 6px 10px;
+    font: inherit;
+    color: var(--nhs-text);
+    background: var(--nhs-white);
+    border: 2px solid var(--nhs-secondary-text);
+    border-radius: 4px;
+  }
+  .field input:focus {
+    outline: 4px solid var(--nhs-yellow);
+    outline-offset: 0;
+    border-color: var(--nhs-text);
+    box-shadow: inset 0 0 0 2px var(--nhs-text);
+  }
+
+  .login .button { margin-top: 8px; }
+  .login .help { font-size: 15px; }
+  .login .help a { display: block; margin-bottom: 8px; }
+
+  .nhs-login-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-weight: 700;
+    font-size: 18px;
+  }
+  .nhs-login-mark svg { width: 56px; height: 22px; }
+
+  /* latest strip on pathway */
+  .latest {
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    border-left: 8px solid var(--nhs-blue);
+    padding: 12px 16px;
+    margin: 0 0 24px;
+    display: none;
+    cursor: pointer;
+  }
+
+  .latest[data-show] { display: block; }
+  .latest .from { font-weight: 700; font-size: 14px; margin: 0 0 2px; }
+  .latest .text { margin: 0; font-size: 15px; }
+  .latest .open { font-size: 14px; text-decoration: underline; color: var(--nhs-blue); }
+
+  /* push banner */
+  .banner {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    width: calc(100% - 24px);
+    max-width: 396px;
+    background: var(--nhs-white);
+    color: var(--nhs-text);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 20, 40, 0.28);
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    z-index: 50;
+    cursor: pointer;
+    transform: translate(-50%, -140%);
+    transition: transform 320ms cubic-bezier(.2,.8,.2,1);
+  }
+
+  .banner[data-show] { transform: translate(-50%, 0); }
+
+  .banner .app {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--nhs-blue);
+    color: var(--nhs-white);
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .banner .title { font-weight: 700; font-size: 14px; margin: 0; }
+  .banner .body {
+    font-size: 14px;
+    margin: 2px 0 0;
+    color: var(--nhs-secondary-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .banner .time { font-size: 12px; color: var(--nhs-secondary-text); margin-left: auto; flex-shrink: 0; }
+
+  /* chat */
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 20px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--nhs-blue);
+    color: var(--nhs-white);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .chat-header h1 { font-size: 22px; margin: 0; }
+  .chat-header p { margin: 0; font-size: 14px; color: var(--nhs-secondary-text); }
+
+  .thread {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .day {
+    text-align: center;
+    font-size: 13px;
+    color: var(--nhs-secondary-text);
+    margin: 8px 0 0;
+  }
+
+  .msg {
+    max-width: 88%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 16px;
+    line-height: 1.45;
+    animation: pop 260ms ease-out;
+  }
+
+  .msg p { margin: 0 0 8px; }
+  .msg p:last-child { margin-bottom: 0; }
+
+  .msg--team {
+    align-self: flex-start;
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg--me {
+    align-self: flex-end;
+    background: var(--nhs-blue);
+    color: var(--nhs-white);
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg .stamp {
+    display: block;
+    font-size: 12px;
+    color: var(--nhs-secondary-text);
+    margin-top: 6px;
+  }
+
+  .msg--me .stamp { color: rgba(255,255,255,0.8); }
+
+  .msg--event {
+    align-self: stretch;
+    max-width: none;
+    background: var(--nhs-pale-grey);
+    border: 1px dashed var(--nhs-border);
+    font-size: 14px;
+    color: var(--nhs-secondary-text);
+    text-align: center;
+    animation: none;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-self: flex-start;
+    animation: pop 260ms ease-out;
+  }
+
+  .chip {
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 100px;
+    border: 2px solid var(--nhs-blue);
+    background: var(--nhs-white);
+    color: var(--nhs-blue);
+    cursor: pointer;
+  }
+
+  .chip:active { background: var(--nhs-blue); color: var(--nhs-white); }
+
+  .typing {
+    align-self: flex-start;
+    display: flex;
+    gap: 4px;
+    padding: 12px 14px;
+    background: var(--nhs-white);
+    border: 1px solid var(--nhs-border);
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+  }
+
+  .typing span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--nhs-secondary-text);
+    animation: blink 1s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+  }
+
+  /* nav badge */
+  .bottom-nav a { position: relative; }
+
+  .badge {
+    position: absolute;
+    top: 0;
+    left: calc(50% + 6px);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 100px;
+    background: var(--nhs-red);
+    color: var(--nhs-white);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    display: none;
+  }
+
+  .badge[data-count]:not([data-count="0"]) { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .button:active { transform: none; }
+    .banner { transition: none; }
+    .msg, .chips { animation: none; }
+    .typing span { animation: none; opacity: 0.6; }
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+  <header class="nhs-header">
+    <svg class="nhs-logo" viewBox="0 0 40 16" role="img" aria-label="NHS">
+      <rect width="40" height="16" fill="#fff"/>
+      <text x="20" y="12.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="12.5" fill="#005EB8">NHS</text>
+    </svg>
+    <span class="nhs-service" id="service-name">NHS App</span>
+  </header>
+
+  <main class="login view" id="view-login" data-active>
+    <div class="nhs-login-mark">
+      <svg viewBox="0 0 40 16" role="img" aria-label="NHS">
+        <rect width="40" height="16" fill="#005EB8"/>
+        <text x="20" y="12.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="12.5" fill="#fff">NHS</text>
+      </svg>
+      login
+    </div>
+    <h1>Log in to see your care</h1>
+    <p class="intro">Use the email address and password you set up with NHS login.</p>
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" type="email" autocomplete="username" inputmode="email">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password">
+      </div>
+      <button class="button" type="submit">Continue</button>
+    </form>
+    <div class="help">
+      <a href="#">Forgotten your password?</a>
+      <a href="#">Set up NHS login</a>
+    </div>
+    <div class="inset-text" style="margin-top: 32px">
+      <p>Demonstration only. Nothing you type is checked or stored. Press Continue to open the app.</p>
+    </div>
+  </main>
+
+  <main class="content view" id="view-home">
+    <p class="caption">Good morning</p>
+    <h1>Mohammed</h1>
+
+    <h2>Needs your attention</h2>
+    <div class="alerts" id="home-alerts"></div>
+    <div class="empty" id="home-empty">Nothing needs your attention right now. We will let you know here when something changes.</div>
+
+    <div class="card">
+      <h2>Your surgery pathway</h2>
+      <p id="home-pathway-text">You are on the waiting list for elective surgery.</p>
+      <p><span class="tag tag--orange" id="home-pathway-tag">Waiting for a theatre date</span></p>
+      <a href="#" class="alert-link" data-go="pathway">See your pathway</a>
+    </div>
+
+    <div class="card">
+      <h2>Quick links</h2>
+      <ul class="quick">
+        <li><a href="#" data-go="messages">Messages from your care team</a></li>
+        <li><a href="#">Your hospital letters</a></li>
+        <li><a href="#">Repeat prescriptions</a></li>
+        <li><a href="#" data-go="account">Your details</a></li>
+      </ul>
+    </div>
+  </main>
+
+  <main class="content view" id="view-pathway">
+    <a class="back-link" href="#">Back to your care</a>
+
+    <p class="caption">Mohammed Ali, NHS number SIM-000007</p>
+    <h1>Your surgery pathway</h1>
+    <p class="lede"><span id="lede-text">You are on the waiting list for elective surgery.</span> <span class="tag tag--orange" id="pathway-tag">Waiting for a theatre date</span></p>
+
+    <div class="latest" id="latest" role="button" tabindex="0">
+      <p class="from">Your care team</p>
+      <p class="text" id="latest-text"></p>
+      <span class="open">Open message</span>
+    </div>
+
+    <div class="card">
+      <h2>Where you are</h2>
+      <ol class="steps">
+        <li class="step step--done">
+          <div class="rail"><div class="marker"></div><div class="line"></div></div>
+          <div>
+            <div class="name">Referred to a specialist</div>
+            <p class="detail">5 September, after your neurology assessment</p>
+          </div>
+        </li>
+        <li class="step step--done">
+          <div class="rail"><div class="marker"></div><div class="line"></div></div>
+          <div>
+            <div class="name">Assessed in hospital</div>
+            <p class="detail">11 September, admitted with chest discomfort</p>
+          </div>
+        </li>
+        <li class="step step--current" id="step-waiting">
+          <div class="rail"><div class="marker"></div><div class="line"></div></div>
+          <div>
+            <div class="name">Waiting for surgery</div>
+            <p class="detail" id="step-waiting-detail">Added to the robotic theatre list on 12 September</p>
+          </div>
+        </li>
+        <li class="step step--pending" id="step-surgery">
+          <div class="rail"><div class="marker"></div><div class="line"></div></div>
+          <div>
+            <div class="name">Surgery</div>
+            <p class="detail" id="step-surgery-detail">Date not yet confirmed</p>
+          </div>
+        </li>
+        <li class="step step--pending">
+          <div class="rail"><div class="marker"></div></div>
+          <div>
+            <div class="name">Discharged home</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="warning-callout" id="callout">
+      <h2>Important</h2>
+      <p>Your operation needs a surgical robot and a recovery bed. The theatre list on 12 September has more planned cases than staff can cover, so your date has not been confirmed yet.</p>
+      <p>We will contact you as soon as a date is available. You do not need to do anything.</p>
+    </div>
+
+    <div class="card">
+      <h2>Theatre list details</h2>
+      <dl class="summary-list">
+        <div class="summary-row"><dt>Theatre</dt><dd>OR-3</dd></div>
+        <div class="summary-row"><dt>Robot</dt><dd>RX-1</dd></div>
+        <div class="summary-row"><dt>Cases staffed</dt><dd class="stat">4 of 6</dd></div>
+        <div class="summary-row"><dt>Recovery beds</dt><dd>2</dd></div>
+        <div class="summary-row"><dt>Priority</dt><dd>Routine</dd></div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>Recent activity</h2>
+      <ul class="timeline">
+        <li>
+          <div>
+            <p class="event">Added to robotic theatre list</p>
+            <p class="meta">12 September, Northbank General</p>
+          </div>
+          <span class="tag tag--orange">Waiting</span>
+        </li>
+        <li>
+          <div>
+            <p class="event">Placed on elective surgery list</p>
+            <p class="meta">12 September, Northbank General</p>
+          </div>
+          <span class="tag tag--orange">Waiting</span>
+        </li>
+        <li>
+          <div>
+            <p class="event">Ambulance handover</p>
+            <p class="meta">12 September, Northbank General</p>
+          </div>
+          <span class="tag tag--green">Done</span>
+        </li>
+        <li>
+          <div>
+            <p class="event">Admitted with chest discomfort</p>
+            <p class="meta">11 September, Northbank General</p>
+          </div>
+          <span class="tag tag--blue">Inpatient</span>
+        </li>
+        <li>
+          <div>
+            <p class="event">Neurology assessment summary sent to your GP</p>
+            <p class="meta">5 September, Riverside Practice</p>
+          </div>
+          <span class="tag tag--green">Done</span>
+        </li>
+        <li>
+          <div>
+            <p class="event">GP consultation</p>
+            <p class="meta">30 August, Riverside Practice</p>
+          </div>
+          <span class="tag tag--green">Done</span>
+        </li>
+      </ul>
+    </div>
+
+    <button class="button" type="button">Message the surgical team</button>
+    <button class="button button--secondary" type="button">View your hospital letters</button>
+
+    <div class="inset-text">
+      <p>Demonstration only. This page is built from synthetic records across GP, hospital and diagnostics systems. The pathway stages are inferred from record types and dates, not held as a single record.</p>
+    </div>
+  </main>
+
+  <main class="content view" id="view-messages">
+    <div class="chat-header">
+      <div class="avatar">NG</div>
+      <div>
+        <h1>Your care team</h1>
+        <p>Northbank General, surgical pathway</p>
+      </div>
+    </div>
+    <div class="thread" id="thread"></div>
+  </main>
+
+  <main class="content view" id="view-account">
+    <p class="caption">Your account</p>
+    <h1>Mohammed Ali</h1>
+
+    <div class="card">
+      <h2>Your details</h2>
+      <dl class="summary-list">
+        <div class="summary-row"><dt>NHS number</dt><dd>SIM-000007</dd></div>
+        <div class="summary-row"><dt>Date of birth</dt><dd>12 May 1968</dd></div>
+        <div class="summary-row"><dt>Email</dt><dd>mohammed.ali@example.com</dd></div>
+        <div class="summary-row"><dt>Mobile</dt><dd>07700 900 007</dd></div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>Your care</h2>
+      <dl class="summary-list">
+        <div class="summary-row"><dt>GP practice</dt><dd>Riverside Practice</dd></div>
+        <div class="summary-row"><dt>GP record number</dt><dd>RIV-6</dd></div>
+        <div class="summary-row"><dt>Hospital</dt><dd>Northbank General</dd></div>
+        <div class="summary-row"><dt>Hospital number</dt><dd>NBG-10006</dd></div>
+        <div class="summary-row"><dt>Current condition</dt><dd>Awaiting elective surgery</dd></div>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>What matters to you</h2>
+      <p>You told us these help us plan your care around you.</p>
+      <dl class="summary-list">
+        <div class="summary-row"><dt>Needs</dt><dd>Transport to appointments</dd></div>
+        <div class="summary-row"><dt>Goals</dt><dd>Understand the next step<br>Avoid unnecessary travel<br>Plan work and travel around a confirmed operation date</dd></div>
+      </dl>
+    </div>
+
+    <button class="button button--secondary" type="button">Update your details</button>
+    <button class="button button--secondary" type="button" id="logout">Log out</button>
+  </main>
+
+  <div class="banner" id="banner" role="status">
+    <div class="app">NHS</div>
+    <div>
+      <p class="title">Your care team</p>
+      <p class="body" id="banner-text"></p>
+    </div>
+    <span class="time">now</span>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Main">
+    <a href="#" data-view="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home<span class="badge" id="home-badge" data-count="0"></span></a>
+    <a href="#" data-view="pathway"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Your care</a>
+    <a href="#" data-view="messages"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>Messages<span class="badge" id="badge" data-count="0"></span></a>
+    <a href="#" data-view="account"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>Account</a>
+  </nav>
+</div>
+
+<script>
+(function () {
+  var thread = document.getElementById('thread');
+  var banner = document.getElementById('banner');
+  var bannerText = document.getElementById('banner-text');
+  var badge = document.getElementById('badge');
+  var latest = document.getElementById('latest');
+  var latestText = document.getElementById('latest-text');
+  var unread = 0;
+  var current = 'pathway';
+  var bannerTimer;
+
+  function showView(name) {
+    current = name;
+    document.querySelectorAll('.view').forEach(function (v) {
+      if (v.id === 'view-' + name) v.setAttribute('data-active', ''); else v.removeAttribute('data-active');
+    });
+    document.querySelectorAll('.bottom-nav a[data-view]').forEach(function (a) {
+      if (a.dataset.view === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    if (name === 'messages') { unread = 0; badge.dataset.count = '0'; latest.removeAttribute('data-show'); }
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll('.bottom-nav a[data-view]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); a.blur(); showView(a.dataset.view); });
+  });
+  banner.addEventListener('click', function () { hideBanner(); showView('messages'); });
+  latest.addEventListener('click', function () { showView('messages'); });
+  latest.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showView('messages'); } });
+
+  function hideBanner() { banner.removeAttribute('data-show'); }
+
+  /* home alerts */
+  var alerts = [];
+  var homeBadge = document.getElementById('home-badge');
+
+  function setAlert(a) {
+    alerts = alerts.filter(function (x) { return x.id !== a.id; });
+    alerts.unshift(a);
+    renderHome();
+  }
+
+  function clearAlert(id) {
+    alerts = alerts.filter(function (x) { return x.id !== id; });
+    renderHome();
+  }
+
+  function renderHome() {
+    var box = document.getElementById('home-alerts');
+    var empty = document.getElementById('home-empty');
+    box.innerHTML = '';
+    var ordered = alerts.slice().sort(function (a, b) {
+      return (b.level === 'action') - (a.level === 'action');
+    });
+    ordered.forEach(function (a) {
+      var card = el('div', 'alert alert--' + a.level);
+      card.appendChild(el('div', 'alert-head', a.level === 'action' ? 'Reply needed' : a.head || 'Update'));
+      var body = el('div', 'alert-body');
+      body.appendChild(el('p', null, '<strong>' + a.title + '</strong>'));
+      body.appendChild(el('p', null, a.text));
+      var row = el('p');
+      var link = el('button', 'alert-link', a.action.label);
+      link.type = 'button';
+      link.addEventListener('click', function () { showView(a.action.view); });
+      row.appendChild(link);
+      row.appendChild(el('span', 'stamp', '  ' + a.stamp));
+      body.appendChild(row);
+      card.appendChild(body);
+      box.appendChild(card);
+    });
+    empty.style.display = alerts.length ? 'none' : 'block';
+    var needReply = alerts.filter(function (a) { return a.level === 'action'; }).length;
+    homeBadge.dataset.count = String(needReply);
+    document.getElementById('home-pathway-text').textContent = document.getElementById('lede-text').textContent;
+    var tag = document.getElementById('pathway-tag');
+    var htag = document.getElementById('home-pathway-tag');
+    htag.textContent = tag.textContent;
+    htag.className = tag.className;
+  }
+
+  document.querySelectorAll('[data-go]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault(); showView(a.dataset.go); });
+  });
+
+  function notify(text) {
+    if (current === 'messages') return;
+    unread += 1;
+    badge.dataset.count = String(unread);
+    latestText.textContent = text;
+    latest.setAttribute('data-show', '');
+    bannerText.textContent = text;
+    banner.setAttribute('data-show', '');
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(hideBanner, 4500);
+  }
+
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  function scrollThread() {
+    if (current === 'messages') window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  function addDay(label) { thread.appendChild(el('p', 'day', label)); }
+
+  function addEvent(text) { thread.appendChild(el('div', 'msg msg--event', text)); scrollThread(); }
+
+  function addTeam(paras, stamp, push) {
+    var m = el('div', 'msg msg--team');
+    paras.forEach(function (p) { m.appendChild(el('p', null, p)); });
+    m.appendChild(el('span', 'stamp', stamp));
+    thread.appendChild(m);
+    scrollThread();
+    if (push) notify(paras[0]);
+  }
+
+  function addMe(text, stamp) {
+    var m = el('div', 'msg msg--me');
+    m.appendChild(el('p', null, text));
+    m.appendChild(el('span', 'stamp', stamp));
+    thread.appendChild(m);
+    scrollThread();
+  }
+
+  function addChips(options) {
+    var box = el('div', 'chips');
+    options.forEach(function (o) {
+      var b = el('button', 'chip', o.label);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        box.remove();
+        addMe(o.label, 'Just now');
+        typing(function () { o.then(); });
+      });
+      box.appendChild(b);
+    });
+    thread.appendChild(box);
+    scrollThread();
+  }
+
+  function typing(done) {
+    var t = el('div', 'typing', '<span></span><span></span><span></span>');
+    thread.appendChild(t);
+    scrollThread();
+    setTimeout(function () { t.remove(); done(); }, 1100);
+  }
+
+  function confirmDate(dateText, arriveText) {
+    var waiting = document.getElementById('step-waiting');
+    waiting.classList.remove('step--current');
+    waiting.classList.add('step--done');
+    document.getElementById('step-waiting-detail').textContent = 'Theatre slot confirmed on 13 September';
+    var step = document.getElementById('step-surgery');
+    step.classList.remove('step--pending');
+    step.classList.add('step--current');
+    document.getElementById('step-surgery-detail').textContent = dateText;
+    var tag = document.getElementById('pathway-tag');
+    tag.textContent = 'Surgery date confirmed';
+    tag.className = 'tag tag--green';
+    document.getElementById('lede-text').textContent = 'Your surgery is booked for ' + dateText + '.';
+    document.getElementById('callout').innerHTML =
+      '<h2>Before your surgery</h2>' +
+      '<p>Arrive at ' + arriveText + ', surgical admissions, Northbank General.</p>' +
+      '<p>Do not eat after midnight the night before. Water is fine until 6am. Bring your medicines and this app.</p>';
+    clearAlert('slot');
+    clearAlert('waiting');
+    setAlert({ id: 'surgery', level: 'info', head: 'Surgery booked', title: dateText,
+      text: 'Arrive at ' + arriveText + ', surgical admissions, Northbank General. Do not eat after midnight the night before.',
+      action: { label: 'See what to do before surgery', view: 'pathway' }, stamp: 'Just now' });
+  }
+
+  var script = [
+    { at: 0, run: function () {
+      addDay('Friday 12 September');
+      addTeam([
+        'Hello Mohammed. You have been added to the robotic theatre list at Northbank General.',
+        'Your date is not confirmed yet because the list is short of staff. We will update you here. Nothing to do for now.'
+      ], '09:10', true);
+      setAlert({ id: 'waiting', level: 'info', head: 'Waiting list', title: 'You are on the robotic theatre list',
+        text: 'Your date is not confirmed yet because the list is short of staff. Nothing to do for now.',
+        action: { label: 'See your pathway', view: 'pathway' }, stamp: '12 Sep, 09:10' });
+    }},
+    { at: 4000, run: function () {
+      addEvent('Blood tests received from Riverside Practice');
+      addTeam([
+        'Your pre-op blood tests from today are back and are in range. They stay valid for 14 days, so you will not need them repeated if your surgery is within that window.'
+      ], '11:32', true);
+      setAlert({ id: 'bloods', level: 'info', head: 'Test results', title: 'Pre-op blood tests are back and in range',
+        text: 'Valid for 14 days. No repeat needed if surgery is within that window.',
+        action: { label: 'Read the message', view: 'messages' }, stamp: '12 Sep, 11:32' });
+    }},
+    { at: 8500, run: function () {
+      addDay('Saturday 13 September');
+      addEvent('Theatre list updated: extra staffed case added to OR-3');
+      addTeam([
+        'A theatre slot has opened up on Thursday 19 September at 7:30am, with the surgical robot and a recovery bed available.',
+        'Can you make it?'
+      ], '08:02', true);
+      setAlert({ id: 'slot', level: 'action', title: 'Theatre slot offered: Thursday 19 September, 7:30am',
+        text: 'A slot with the surgical robot and a recovery bed has opened up. Reply to accept it or ask for another date.',
+        action: { label: 'Reply now', view: 'messages' }, stamp: '13 Sep, 08:02' });
+      addChips([
+        { label: 'Yes, book it', then: function () {
+          confirmDate('Thursday 19 September, 7:30am', '6:45am');
+          addTeam([
+            'Booked. Thursday 19 September, arrive at 6:45am, surgical admissions, Northbank General.',
+            'Do not eat after midnight the night before. Water is fine until 6am. A letter with full instructions is in your hospital letters.'
+          ], 'Just now', true);
+          setTimeout(function () {
+            typing(function () {
+              addTeam([
+                'You told us transport can be difficult. Would you like us to arrange hospital transport for the morning of 19 September?'
+              ], 'Just now', true);
+              addChips([
+                { label: 'Yes please', then: function () {
+                  addTeam(['Done. Transport is booked to collect you at 6:00am. The driver will message you the night before.'], 'Just now', true);
+                  setAlert({ id: 'transport', level: 'info', head: 'Transport booked', title: 'Pick-up at 6:00am on the day of surgery',
+                    text: 'The driver will message you the night before.',
+                    action: { label: 'Read the message', view: 'messages' }, stamp: 'Just now' });
+                }},
+                { label: 'No, I have a lift', then: function () {
+                  addTeam(['No problem. If that changes, reply here and we will sort it.'], 'Just now', true);
+                }}
+              ]);
+            });
+          }, 1800);
+        }},
+        { label: 'No, suggest another', then: function () {
+          addTeam([
+            'No problem. The next slot with a robot and recovery bed is Tuesday 24 September at 8:00am. Would that work?'
+          ], 'Just now', true);
+          addChips([
+            { label: 'Yes, book 24 September', then: function () {
+              confirmDate('Tuesday 24 September, 8:00am', '7:15am');
+              addTeam(['Booked. Tuesday 24 September, arrive at 7:15am, surgical admissions, Northbank General. A letter with full instructions is in your hospital letters.'], 'Just now', true);
+            }},
+            { label: 'Call me to discuss', then: function () {
+              addTeam(['We will call you on your mobile ending 0007 this afternoon between 2pm and 4pm.'], 'Just now', true);
+            }}
+          ]);
+        }}
+      ]);
+    }}
+  ];
+
+  document.getElementById('logout').addEventListener('click', function () { location.reload(); });
+
+  document.getElementById('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    document.querySelector('.phone').setAttribute('data-logged-in', '');
+    document.getElementById('service-name').textContent = 'Northbank General Hospital';
+    renderHome();
+    showView('home');
+    script.forEach(function (s) { setTimeout(s.run, s.at + 800); });
+  });
+})();
+</script>
+</body>
+</html>
