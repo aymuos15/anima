@@ -243,10 +243,17 @@ async function handleDemoReply(patientId: string, text: string) {
     } else { const question = classify('ecg_normal', p).patientExplanation; await say(p, question, '', true) }
     return
   }
+  // A drink name is not evidence that the surgical team recommended it.
+  const teamRecommendation = /\b(?:(?:surgical|surgery|hospital|pre-assessment|pre-op) (?:team|nurse|doctor)|surgeon)\s+(?:(?:has|have|had|also|specifically)\s+){0,3}(?:recommend|prescrib|gave|giv|provid|suppl|advis)/i.test(text) || /(?:recommended|prescribed|given|provided|supplied|advised)\s+by\s+(?:(?:my|the)\s+)?(?:(?:surgical|surgery|hospital|pre-assessment|pre-op) (?:team|nurse|doctor)|surgeon)\b/i.test(text)
+  const recommendationDenied = /\b(?:did not|didn't|has not|hasn't|have not|haven't|never|not)\b.*(?:recommend|prescrib|giv|gave|provid|suppl|advis)|(?:recommend|prescrib|giv|gave|provid|suppl|advis)\w*\s+(?:no|none)\b/i.test(text.replace(/[’‘]/g, "'"))
+  if (['nutrition', 'nutrition_type', 'nutrition_supply'].includes(c.stage) && recommendationDenied) {
+    c.nutritionDrinks = undefined
+    await askArrival(p); return
+  }
   if (c.stage === 'nutrition' || c.stage === 'nutrition_type') {
     if (/\?|do I need|should I/i.test(text)) { await say(p, 'Your surgical team should confirm any recommended drinks for you. Have they given you a personal drinks plan?', text); return }
     if (reported === 'no' || /none|not recommended|not given/i.test(text)) { await askArrival(p); return }
-    if (c.stage === 'nutrition_type' || reported === 'yes' || /protein|shake|drink|preop|carb/i.test(text)) {
+    if (c.stage === 'nutrition_type' || teamRecommendation || (reported === 'yes' && !/friend|family|internet|online|myself|on my own|neighbou?r|trainer|influencer/i.test(text))) {
       c.nutritionDrinks = text
       if (/preop|carb/i.test(text) && /protein/i.test(text) && c.stage !== 'nutrition_type') {
         c.stage = 'nutrition_type'
