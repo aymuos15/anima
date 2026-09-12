@@ -36,7 +36,7 @@ async function readBody(req: import('node:http').IncomingMessage) {
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : {}
 }
 
-createServer(async (req, res) => {
+export const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost')
   try {
     if (req.method === 'POST' && url.pathname === '/api/chat') {
@@ -128,4 +128,8 @@ createServer(async (req, res) => {
     console.error(e)
     json(res, 500, { error: String(e) })
   }
-}).listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${MODEL_NAME} via ${process.env.MODEL_PROVIDER ?? 'auto'} ${process.env.OPENAI_BASE_URL ?? ''})`))
+})
+
+if (process.env.NETLIFY !== 'true') {
+  server.listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${MODEL_NAME} via ${process.env.MODEL_PROVIDER ?? 'auto'} ${process.env.OPENAI_BASE_URL ?? ''})`))
+}

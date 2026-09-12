@@ -12,6 +12,8 @@
     "@google/genai": "^2.22.0",
     "better-sqlite3": "^13.0.3",
     "openai": "^5.23.2",
+    "pg": "^8.23.0",
+    "serverless-http": "^4.0.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

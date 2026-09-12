@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@ag-ui/core": "^0.0.45",
+    "@animahealth/adk": "^0.6.0",
+    "@google/genai": "^2.22.0",
+    "@mozilla/readability": "^0.6.0",
+    "better-sqlite3": "^13.0.3",
+    "jsdom": "^30.0.1",
+    "openai": "^5.23.2",
+    "pg": "^8.23.0",
+    "playwright": "^1.63.0",
+    "serverless-http": "^4.0.0",
+    "zod": "^3.25.76"
+  }
+}
