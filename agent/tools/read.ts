@@ -83,7 +83,14 @@ export async function getAppointmentSessions(late = false) {
         const d = r.data!, increment = Number(d.slotMinutes ?? 15) * 60000
         for (let at = Number(d.startsAt); at < Number(d.endsAt); at += increment) {
           if (at <= now || (d.blockedSlots as Array<{ startsAt: number }> ?? []).some(b => b.startsAt === at)) continue
-          if ((view.appointments ?? []).some(a => a.status !== 'cancelled' && a.data?.sessionId === r.id && a.data?.startsAt === at)) continue
+          if ((view.appointments ?? []).some(a => {
+            if (a.status === 'cancelled') return false
+            const appointment = a.data
+            if (!appointment || (appointment.sessionId !== r.id && (!d.clinician || appointment.clinician !== d.clinician))) return false
+            const startsAt = Number(appointment.startsAt)
+            const endsAt = startsAt + Number(appointment.durationMinutes ?? 15) * 60000
+            return startsAt < at + increment && endsAt > at
+          })) continue
           candidates.push({ sessionId: r.id, sessionVersion: r.version!, startsAt: at, startsAtText: fmtDate(at), title: r.title, period })
         }
       }

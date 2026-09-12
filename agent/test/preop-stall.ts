@@ -5,6 +5,36 @@ const mock = process.argv.includes('--mock'), writes: any[] = [], file = new URL
 const prior = mock && existsSync(file) ? readFileSync(file) : undefined
 let exitCode = 0
 if (mock) {
+  const { getAppointmentSessions } = await import('../tools/read.js')
+  const clock = sim.clock, get = sim.get
+  const start = 1789200900000, minute = 60000
+  // Captured live collision: r-3665 occupies Dr Maya Shah at 08:15 without sessionId.
+  const appointment = { id: 'r-3665', kind: 'appointment', title: 'Practice follow-up', status: 'booked', patientId: 'SIM-000001', createdAt: 1789200000000, data: { mode: 'in-person', startsAt: start, clinician: 'Dr Maya Shah', durationMinutes: 15, capacityReserved: false } }
+  const sessions = ['AM', 'PM'].map((period, i) => ({ id: `session-${period}`, kind: 'appointment-session', title: `Main surgery · ${period}`, status: 'open', version: 1, createdAt: 1789200000000, data: { mode: 'in-person', clinician: 'Dr Maya Shah', startsAt: start + i * 285 * minute, endsAt: start + (i * 285 + 60) * minute, slotMinutes: 15, blockedSlots: [] } }))
+  try {
+    sim.clock = async () => ({ now: 1789200000000, paused: true })
+    const cases = [
+      { label: 'captured booking without sessionId blocks same clinician', data: appointment.data, status: 'booked', want: start + 15 * minute },
+      { label: 'appointment starting earlier overlaps candidate', data: { ...appointment.data, startsAt: start - 5 * minute }, status: 'booked', want: start + 15 * minute },
+      { label: 'appointment starting inside candidate blocks both overlapping slots', data: { ...appointment.data, startsAt: start + 5 * minute }, status: 'booked', want: start + 30 * minute },
+      { label: 'adjacent earlier appointment leaves candidate free', data: { ...appointment.data, startsAt: start - 15 * minute }, status: 'booked', want: start },
+      { label: 'other clinician leaves candidate free', data: { ...appointment.data, clinician: 'Nurse Alex Morgan' }, status: 'booked', want: start },
+      { label: 'same session blocks even without clinician', data: { startsAt: start, durationMinutes: 15, sessionId: 'session-AM' }, status: 'booked', want: start + 15 * minute },
+      { label: 'cancelled appointment frees candidate', data: appointment.data, status: 'cancelled', want: start },
+      { label: 'completed appointment remains occupied diary history', data: appointment.data, status: 'completed', want: start + 15 * minute },
+    ]
+    for (const c of cases) {
+      sim.get = async () => ({ sessions, appointments: [{ ...appointment, data: c.data, status: c.status }] })
+      const slots = await getAppointmentSessions()
+      assert.equal(slots[0].startsAt, c.want, c.label)
+      assert.deepEqual(slots.map(s => s.period), ['AM', 'PM'], 'retain both real periods')
+    }
+    sim.get = async () => ({ sessions, appointments: [{ ...appointment, data: { ...appointment.data, startsAt: start + 40 * minute } }] })
+    assert.deepEqual((await getAppointmentSessions(true)).map(s => s.startsAt), [start + 15 * minute, start + 330 * minute], 'late preference selects latest non-overlapping real slot in each period')
+  } finally { sim.clock = clock; sim.get = get }
+  console.log('appointment availability regressions passed')
+}
+if (mock) {
   process.env.PREOP_MODEL_OFF = '1'; process.env.PORT = '8791'
   const now = Date.UTC(2026, 8, 12, 7), resources: any[] = []
   const people: Patient[] = ['PLAIN', 'MODIFIED'].map((id, i) => ({ id: `HARNESS-${id}`, name: `Harness ${id}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i ? ['diabetes', 'CKD'] : [])], needs: i ? ['Transport'] : [], goals: [], localIds: {} }))
