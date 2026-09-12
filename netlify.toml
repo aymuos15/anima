@@ -1,22 +1,15 @@
 [build]
-  publish = "."
-  functions = "netlify/functions"
+  command = "npm run build"
+  publish = "public"
+  functions = "netlify/functions-dist"
 
+# The function is pre-bundled by esbuild (npm run build:fn) into netlify/functions-dist as one ESM file,
+# because Netlify's own bundlers cannot handle the ADK package (its tracer crashes on the ESM build and
+# its CommonJS path drags in playwright). "none" tells Netlify to ship the file as-is.
 [functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["playwright", "playwright-core", "jsdom", "@mozilla/readability", "@ag-ui/core"]
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
+  node_bundler = "none"
 
 [[redirects]]
   from = "/admin"
   to = "/admin.html"
-  status = 200
-
-[[redirects]]
-  from = "/sim"
-  to = "/sim.html"
   status = 200

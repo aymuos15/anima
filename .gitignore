@@ -1,8 +1,10 @@
+node_modules/
 key.txt
 agent/key-agent.txt
 agent/sessions.db*
-node_modules/
-
 .netlify/
 supabase/.temp/
 *.log
+.env
+.env.*
+netlify/functions-dist/

@@ -1,11 +1,21 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const SIM_BASE = process.env.SIM_BASE ?? 'https://sim.animahacks.com'
-const KEY = (process.env.SIM_KEY ?? readFileSync(join(here, '..', 'key.txt'), 'utf8')).trim()
+
+// SIM_KEY env var, or agent/key-agent.txt for local development. Resolved lazily so a missing key
+// fails on the first request with a clear message rather than crashing at import time.
+let key: string | undefined
+function simKey() {
+  if (key) return key
+  const file = join(here, 'key-agent.txt')
+  key = (process.env.SIM_KEY ?? (existsSync(file) ? readFileSync(file, 'utf8') : '')).trim()
+  if (!key) throw new Error('SIM_KEY is not set (or put the simulator key in agent/key-agent.txt)')
+  return key
+}
 
 export const SITES = ['gp', 'hospital', 'pharmacy', 'community', 'diagnostics', 'wearables', 'referrals'] as const
 export type Site = (typeof SITES)[number]
@@ -19,7 +29,7 @@ export class SimError extends Error {
 async function request(method: string, path: string, body?: unknown, headers: Record<string, string> = {}) {
   const res = await fetch(SIM_BASE + path, {
     method,
-    headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', ...headers },
+    headers: { Authorization: `Bearer ${simKey()}`, 'Content-Type': 'application/json', ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(method === 'POST' ? 90000 : Number(process.env.SIM_GET_TIMEOUT_MS ?? 15000)),
   })
