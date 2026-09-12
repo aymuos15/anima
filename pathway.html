@@ -109,10 +109,7 @@
   <main class="content view" id="view-pathway">
     <a class="back-link" href="#" data-go="home">Back to home</a>
     <p class="caption" id="pw-caption"></p>
-    <h1>Your care</h1>
-    <button class="button button--secondary operation-toggle" type="button" id="operation-toggle" aria-expanded="false" aria-controls="operation-details">Upcoming operation</button>
-    <div class="operation-details" id="operation-details" hidden>
-    <h2 id="pw-title"></h2>
+    <h1 id="pw-title"></h1>
     <p class="lede" id="lede-text"></p>
     <div class="latest" id="latest" role="button" tabindex="0">
       <p class="from">Your care team</p>
@@ -129,9 +126,8 @@
       <ol class="steps" id="rx-steps"></ol>
       <dl class="summary-list" id="rx-details" style="margin-top:20px"></dl>
     </div>
-    </div>
-    <button class="button button--secondary" type="button" data-go="activity">Recent activity</button>
     <button class="button" type="button" data-go="messages">Message your care team</button>
+    <button class="button button--secondary" type="button" data-go="activity">Recent activity</button>
     <div class="inset-text">
       <p>Live demonstration. This page is rebuilt from synthetic records across GP, hospital, pharmacy, community, diagnostics and referral systems every time your care team acts. The pathway stages are inferred from record types and dates, not held as a single record.</p>
     </div>
@@ -298,8 +294,6 @@
   document.querySelectorAll('.bottom-nav a[data-view]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); a.blur(); showView(a.dataset.view); }); });
   document.querySelectorAll('[data-go]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); showView(a.dataset.go); }); });
   banner.addEventListener('click', function () { hideBanner(); showView('messages'); });
-  var opToggle = $('operation-toggle'), opDetails = $('operation-details');
-  opToggle.addEventListener('click', function () { var open = opDetails.hidden; opDetails.hidden = !open; opToggle.setAttribute('aria-expanded', open ? 'true' : 'false'); });
   latest.addEventListener('click', function () { showView('messages'); });
   latest.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showView('messages'); } });
   function hideBanner() { banner.removeAttribute('data-show'); }
@@ -350,7 +344,7 @@
   function renderPathway() {
     $('pw-caption').textContent = patient.name + ', NHS number ' + patient.id;
     $('activity-caption').textContent = patient.name + ', NHS number ' + patient.id;
-    $('pw-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
+    $('pw-title').textContent = 'Your ' + condition().toLowerCase();
     $('lede-text').textContent = ledeText();
 
     var steps = $('steps'); steps.innerHTML = '';
@@ -522,7 +516,7 @@
     });
     empty.style.display = alerts.length ? 'none' : 'block';
     homeBadge.dataset.count = String(alerts.filter(function (a) { return a.level === 'action'; }).length);
-    $('home-pathway-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
+    $('home-pathway-title').textContent = 'Your ' + condition().toLowerCase();
     $('home-pathway-text').textContent = ledeText();
   }
 
