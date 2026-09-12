@@ -57,6 +57,7 @@
   <main class="content view" id="view-home">
     <p class="caption">Good morning</p>
     <h1 id="home-name"></h1>
+    <div id="preop-home"></div>
     <h2>Needs your attention</h2>
     <div class="alerts" id="home-alerts"></div>
     <div class="empty" id="home-empty">Nothing needs your attention right now. We will let you know here when something changes.</div>
@@ -82,6 +83,7 @@
     <p class="caption" id="pw-caption"></p>
     <h1 id="pw-title"></h1>
     <p class="lede"><span id="lede-text"></span> <span class="tag" id="pathway-tag"></span></p>
+    <div id="preop-pathway"></div>
     <div class="latest" id="latest" role="button" tabindex="0">
       <p class="from">Your care team</p>
       <p class="text" id="latest-text"></p>
@@ -97,7 +99,7 @@
       <dl class="summary-list" id="details"></dl>
     </div>
     <div class="card">
-      <h2>Recent activity</h2>
+      <h2>Clinical record <span class="record-live">LIVE</span></h2>
       <ul class="timeline" id="timeline"></ul>
     </div>
     <button class="button" type="button" data-go="messages">Message your care team</button>
@@ -173,13 +175,52 @@
   var el = function (tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
-  var PATIENTS = [
-    { id: 'SIM-000007', name: 'Mohammed Ali', type: 'Elective surgery' },
-    { id: 'SIM-000504', name: 'Ben Cooper', type: 'MSK referral' },
-    { id: 'SIM-000023', name: 'George Brown', type: 'Knee replacement' },
-    { id: 'SIM-000002', name: 'George Evans', type: 'Referral returned' },
-    { id: 'SIM-000070', name: 'Daniel Williams', type: 'Rheumatology, interpreter' }
-  ];
+  var PATIENTS = [];
+  var demoState = null, demoBoard = null, preopSignature = '', transcriptSignature = '';
+  var requestedPatient = new URLSearchParams(location.search).get('patient');
+  var itemColours = { not_started: 'grey', pending: 'orange', booked: 'blue', done: 'green', review: 'red' };
+  var itemStates = { not_started: 'Not started', pending: 'Pending', booked: 'Booked', done: 'Done', review: 'Review' };
+  function preopRun() { return patient && demoState && demoState.patients[patient.id]; }
+  function renderPreop() {
+    var run = preopRun();
+    if (!run) { $('preop-home').innerHTML = ''; $('preop-pathway').innerHTML = ''; return; }
+    var done = run.checklist.filter(function (i) { return i.state === 'done'; }).length;
+    var blocked = run.modifiers.includes('theatre_blocked');
+    var heading = '<section class="card preop-card"><h2>Getting ready for your operation</h2><p>' + esc(run.procedureLabel) + '</p><p class="caption">' + (blocked ? 'Your hospital is confirming your operation date.' : esc(fmt(run.surgeryDate)) + ' · ' + (28 - demoState.step * 7) + ' days to go') + '</p>';
+    var progress = '<div class="readiness-summary"><strong>' + (run.status === 'clinical_review' ? 'Clinical review needed' : done === 5 ? 'Ready for theatre' : 'Your preparation') + '</strong><span>' + done + ' of 5 complete</span></div><div class="readiness-track"><span style="width:' + done * 20 + '%"></span></div>';
+    var pills = '<div class="checklist-pills">' + run.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '">' + (i.state === 'done' ? '✓ ' : '') + esc(i.label) + '</span>'; }).join('') + '</div>';
+    $('preop-home').innerHTML = heading + progress + pills + '</section>';
+    $('preop-pathway').innerHTML = heading + progress + '<ul class="preop-items">' + run.checklist.map(function (i) { return '<li><div><strong>' + esc(i.label) + '</strong><span class="tag tag--' + itemColours[i.state] + '">' + itemStates[i.state] + '</span></div>' + (i.detail ? '<p>' + esc(i.detail) + '</p>' : '') + '</li>'; }).join('') + '</ul></section>';
+    $('live-note').textContent = 'Your conversation with the pre-op team. Replies here and by iMessage follow the same preparation.';
+    var signature = JSON.stringify(run.transcript);
+    if (signature !== transcriptSignature) {
+      var hadMessages = transcriptSignature && transcriptSignature !== '[]'; transcriptSignature = signature;
+      thread.innerHTML = run.transcript.map(function (m) { return '<div class="msg msg--' + (m.from === 'patient' ? 'me' : m.from === 'system' ? 'event' : 'team') + '"><p>' + esc(m.text).replace(/\n/g, '<br>') + '</p><span class="stamp">' + esc(new Date(m.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })) + '</span></div>'; }).join('') || '<div class="empty">Your pre-op team will be in touch when your preparation starts.</div>';
+      var last = run.transcript[run.transcript.length - 1];
+      if (hadMessages && last && last.from === 'agent') notify(last.text);
+      scrollThread();
+    }
+    $('composer-input').disabled = !run.sessionId || busy;
+    $('composer').querySelector('button').disabled = !run.sessionId || busy;
+  }
+  async function refreshDemo() {
+    try {
+      var responses = await Promise.all([api('/api/demo/state'), api('/api/board')]);
+      if (!responses[0].patients || !responses[1].rows) return;
+      var changedWorld = demoState && demoState.runId !== responses[0].runId;
+      demoState = responses[0]; demoBoard = responses[1];
+      var ids = demoBoard.featuredPatientIds.concat(Object.keys(demoState.patients).filter(function (id) { return !demoBoard.featuredPatientIds.includes(id); }));
+      PATIENTS = ids.map(function (id) { var p = demoState.patients[id]; return { id: p.patientId, name: p.name, type: (demoBoard.featuredPatientIds.includes(id) ? 'Featured · ' : '') + p.procedureLabel }; });
+      if ((!patient && requestedPatient) || (changedWorld && patient)) {
+        var target = PATIENTS.find(function (p) { return p.id === (requestedPatient || patient.id); }) || PATIENTS[0];
+        requestedPatient = null;
+        if (target) { $('phone').setAttribute('data-logged-in', ''); loadPatient(target); showView('home'); }
+      }
+      var signature = JSON.stringify({ step: demoState.step, patient: preopRun() });
+      if (preopSignature !== signature) { preopSignature = signature; renderPreop(); if (patient) loadPathway().catch(console.error); }
+      if (palette.hasAttribute('data-open')) renderPalette();
+    } catch (e) { console.error(e); }
+  }
 
   var STAGES = [
     ['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']
@@ -238,7 +279,7 @@
       if (gen !== generation) return;
       pathway = p;
       if (p.patient) patient = p.patient;
-      renderPathway(); renderHome(); renderAccount();
+      renderPathway(); renderHome(); renderAccount(); renderPreop();
     });
   }
 
@@ -435,6 +476,16 @@
     var v = $('composer-input').value.trim();
     if (!v || busy) return;
     $('composer-input').value = '';
+    if (preopRun()) {
+      var gen = generation; busy = true; renderPreop();
+      api('/api/demo/reply', { patientId: patient.id, text: v }).then(function (state) {
+        if (gen !== generation) return;
+        busy = false;
+        if (state.error) { addEvent(state.error); renderPreop(); return; }
+        demoState = state; renderPreop(); loadPathway();
+      }).catch(function (e) { if (gen === generation) { busy = false; renderPreop(); addEvent('Could not send reply: ' + e); } });
+      return;
+    }
     addMe(v);
     if (pending.length) {
       // a typed reply answers the open proposal rather than starting a new turn
@@ -448,18 +499,19 @@
 
   /* ---------- patient switching ---------- */
   function loadPatient(meta) {
-    generation += 1;
+    generation += 1; transcriptSignature = ''; preopSignature = '';
     patient = { id: meta.id, name: meta.name, conditions: [], needs: [], goals: [], localIds: {} };
     pathway = null; sessionId = null; busy = false; alerts = []; unread = 0; badge.dataset.count = '0';
     thread.innerHTML = ''; latest.removeAttribute('data-show'); hideBanner(); typing(false);
     $('service-name').textContent = 'NHS App';
     $('live-note').textContent = 'Live: messages are written by the care team agent from your records.';
     renderHome(); renderAccount();
-    loadPathway().then(function () { turn({ message: 'start' }); });
+    renderPreop();
+    loadPathway().then(function () { if (!preopRun()) turn({ message: 'start' }); }).catch(console.error);
   }
 
   $('logout').addEventListener('click', function () { location.reload(); });
-  $('login-form').addEventListener('submit', function (e) { e.preventDefault(); $('phone').setAttribute('data-logged-in', ''); loadPatient(PATIENTS[0]); showView('home'); });
+  $('login-form').addEventListener('submit', function (e) { e.preventDefault(); if (!PATIENTS.length) return; $('phone').setAttribute('data-logged-in', ''); loadPatient(PATIENTS[0]); showView('home'); });
 
   /* ---------- demo palette ---------- */
   var palette = $('palette'), list = $('palette-list'), sel = 0;
@@ -467,7 +519,7 @@
     list.innerHTML = '';
     PATIENTS.forEach(function (p, i) {
       var li = el('li', 'palette-item');
-      li.innerHTML = '<span class="pid">' + p.id + '</span><span class="pname">' + p.name + '</span><span class="ptype">' + p.type + '</span>';
+      li.innerHTML = '<span class="pid">' + esc(p.id) + '</span><span class="pname">' + esc(p.name) + '</span><span class="ptype">' + esc(p.type) + '</span>';
       if (i === sel) li.setAttribute('data-selected', '');
       if (patient && patient.id === p.id) li.setAttribute('data-current', '');
       li.addEventListener('click', function () { pick(i); });
@@ -477,16 +529,17 @@
   }
   function openPalette() { sel = Math.max(0, PATIENTS.findIndex(function (p) { return patient && p.id === patient.id; })); renderPalette(); palette.setAttribute('data-open', ''); }
   function closePalette() { palette.removeAttribute('data-open'); }
-  function pick(i) { closePalette(); $('phone').setAttribute('data-logged-in', ''); loadPatient(PATIENTS[i]); showView('home'); }
+  function pick(i) { if (!PATIENTS[i]) return; closePalette(); $('phone').setAttribute('data-logged-in', ''); loadPatient(PATIENTS[i]); showView('home'); }
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); palette.hasAttribute('data-open') ? closePalette() : openPalette(); return; }
-    if (!palette.hasAttribute('data-open')) return;
+    if (!palette.hasAttribute('data-open') || !PATIENTS.length) return;
     if (e.key === 'Escape') closePalette();
     else if (e.key === 'ArrowDown') { e.preventDefault(); sel = (sel + 1) % PATIENTS.length; renderPalette(); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); sel = (sel - 1 + PATIENTS.length) % PATIENTS.length; renderPalette(); }
     else if (e.key === 'Enter') { e.preventDefault(); pick(sel); }
   });
   palette.addEventListener('click', function (e) { if (e.target === palette) closePalette(); });
+  refreshDemo(); setInterval(refreshDemo, 3000);
 })();
 </script>
 </body>

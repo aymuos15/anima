@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pre-op concierge — Demo console</title><link rel="stylesheet" href="pathway.css"></head>
+<body class="demo-page">
+<header class="demo-header"><div><span class="demo-nhs">NHS</span><span>Northbank General</span></div><nav><a href="console.html" aria-current="page">Demo console</a><a href="pathway.html" target="_blank">Patient app ↗</a><a href="board.html" target="_blank">Clinician board ↗</a></nav></header>
+<main class="demo-main">
+<div class="demo-title"><div><p class="caption">From booked to prepared</p><h1>Pre-op concierge</h1><p class="lede">Every patient ready. Every step in the record.</p></div><div class="live-label"><span></span> Live simulation <small id="world">Connecting…</small></div></div>
+<div class="console-toolbar"><div class="field"><label for="phone-number">Patient’s mobile number <span class="caption">(optional for on-screen conversation)</span></label><input id="phone-number" type="tel" placeholder="+44…" autocomplete="off"></div><p>Choose a patient, then start their preparation.<br><span class="caption">The on-screen reply follows the same conversation as iMessage.</span></p><button class="button button--secondary compact" id="reset" disabled>Reset demo</button></div>
+<p class="console-notice" id="notice" role="status">Reading the live cohort…</p>
+<div class="featured-grid" id="featured"></div>
+<details class="cohort-rest"><summary id="rest-label">Rest of the cohort</summary><div id="rest"></div></details>
+<section class="timeline-control card"><div class="section-heading"><h2>Preparation timeline</h2><span class="caption" id="days-label">28 days to surgery</span></div><div class="timeline-strip"><button class="button button--secondary compact" id="rewind" disabled>−7 days</button><div id="step-track" class="step-track"></div><button class="button compact" id="advance" disabled>+7 days</button></div></section>
+<div class="console-workspace"><section class="card conversation-card"><div class="section-heading"><h2>Patient conversation</h2><a id="open-patient" href="pathway.html" target="_blank">Open patient app ↗</a></div><div id="patient-tabs" class="patient-tabs"></div><div id="conversations"><p class="caption">Start a patient above to begin.</p></div></section><aside class="card outcomes-card"><p class="caption">At the next +7 days</p><h2>Results and follow-up</h2><p class="caption">Choose an outcome for each pending item. A choice applies to every patient due for that item.</p><div id="outcomes"></div><p class="timeline-note">Rewind restores preparation and messages. The live clinical record keeps its audit history.</p></aside></div>
+<p class="demo-footer">Northbank General · Coordinated with OpenAI and the Anima ADK <span id="cohort-count"></span></p>
+</main>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+  var state, board, selected, busy = false, contacting = null, picks = {}, drafts = {}, lastRender = '';
+  var status = {not_contacted:['Not contacted','grey'],in_progress:['In progress','orange'],ready:['Ready for theatre','green'],clinical_review:['Clinical review','red'],done:['Done','blue']};
+  var modifiers = {add_hba1c:'HbA1c added',renal_caution:'Kidney care',transport_flag:'Transport support',carer_flag:'Include carer',interpreter_flag:'Interpreter support',slots_late:'Later appointments',theatre_blocked:'Theatre date to confirm'};
+  var outcomes = {bloods:[['bloods_normal','Normal bloods'],['bloods_low_hb','Low haemoglobin · 108 g/L'],['bloods_high_k','High potassium · 5.9 mmol/L']],ecg:[['ecg_normal','Normal heart tracing'],['ecg_new_af','New irregular rhythm']],physio:[['physio_done','Exercises continued'],['physio_not_started','Exercises not started']]};
+  async function request(path, body) { var r = await fetch(path, body === undefined ? undefined : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); var data = await r.json(); if (!r.ok || data.error) throw new Error(data.error || 'Request failed'); return data; }
+  function patients() { return board.rows.map(function (row) { return state.patients[row.patientId] || row; }); }
+  function patientCard(p) {
+    var s = status[p.status] || status.not_contacted, initial = p.name.split(/\s+/).map(function(n){return n[0];}).slice(0,2).join('');
+    return '<article class="featured-card' + (selected === p.patientId ? ' selected' : '') + '"><div class="featured-top"><span class="patient-initials">' + esc(initial) + '</span><span class="tag tag--' + s[1] + '">' + (contacting === p.patientId ? 'Contacting…' : s[0]) + '</span></div><h2><button class="text-button" data-select="' + esc(p.patientId) + '">' + esc(p.name) + '</button></h2><p class="procedure">' + esc(p.procedureLabel) + '</p><p class="surgery-date">' + (p.modifiers.includes('theatre_blocked') ? 'Date being confirmed by hospital' : esc(new Date(p.surgeryDate).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}))) + '</p><dl class="record-facts"><dt>Conditions</dt><dd>' + esc(p.conditions.join(' · ') || 'None recorded') + '</dd><dt>Needs</dt><dd>' + esc(p.needs.join(' · ') || 'None recorded') + '</dd></dl><div class="modifier-pills">' + p.modifiers.map(function(m){return '<span>'+esc(modifiers[m])+'</span>';}).join('') + '</div><button class="button' + (p.sessionId ? ' button--secondary' : '') + '" data-start="' + esc(p.patientId) + '"' + (busy ? ' disabled' : '') + '>' + (contacting === p.patientId ? 'Contacting…' : p.sessionId ? 'View conversation' : 'Start') + '</button></article>';
+  }
+  function render() {
+    if (!state || !board) return;
+    var all = patients(), featured = board.featuredPatientIds.map(function(id){return state.patients[id];}).filter(Boolean);
+    if (!selected || !state.patients[selected]) selected = featured[0] && featured[0].patientId;
+    $('world').textContent = state.world;
+    $('cohort-count').textContent = board.cohortCount + ' booked · ' + board.notReadyCount + ' not ready';
+    $('featured').innerHTML = featured.map(patientCard).join('');
+    var rest = all.filter(function(p){return !board.featuredPatientIds.includes(p.patientId);});
+    $('rest-label').textContent = 'Rest of the cohort · ' + rest.length + ' patients';
+    $('rest').innerHTML = rest.map(function(p){return '<div class="cohort-line"><button class="text-button" data-select="'+esc(p.patientId)+'">'+esc(p.name)+'</button><span>'+esc(p.procedureLabel)+'</span><small>'+esc(p.needs.join(' · ') || 'No additional needs recorded')+'</small><button class="button button--secondary compact" data-start="'+esc(p.patientId)+'"'+(busy?' disabled':'')+'>'+(p.sessionId?'View':'Start')+'</button></div>';}).join('');
+    $('days-label').textContent = state.step === 4 ? 'Surgery day' : (28 - state.step * 7) + ' days to surgery';
+    $('step-track').innerHTML = [28,21,14,7,0].map(function(d,i){return '<span class="timeline-stop'+(i===state.step?' current':i<state.step?' passed':'')+'"><b>T−'+d+'</b><small>'+(i===4?'Surgery':i===0?'Start':'Week '+i)+'</small></span>';}).join('');
+    $('advance').disabled = busy || state.step === 4; $('rewind').disabled = busy || state.step === 0; $('reset').disabled = busy;
+    var panes = all.filter(function(p){return p.sessionId || p.transcript.length || p.patientId === selected;});
+    $('patient-tabs').innerHTML = panes.map(function(p){return '<button data-select="'+esc(p.patientId)+'" class="patient-tab'+(p.patientId===selected?' active':'')+'">'+esc(p.name)+'</button>';}).join('');
+    $('open-patient').href = 'pathway.html?patient=' + encodeURIComponent(selected || '');
+    $('conversations').innerHTML = panes.map(function(p){return '<div class="conversation-pane"'+(p.patientId!==selected?' hidden':'')+'><div class="console-thread" id="thread-'+esc(p.patientId)+'">'+(p.transcript.map(function(m){return '<div class="msg msg--'+(m.from==='patient'?'me':m.from==='system'?'event':'team')+'"><p>'+esc(m.text).replace(/\n/g,'<br>')+'</p><span class="stamp">'+esc(m.from==='agent'?'Pre-op team':m.from==='patient'?p.name:'Timeline')+' · '+new Date(m.at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'</span></div>';}).join('') || '<div class="empty">'+(contacting === p.patientId ? 'Contacting the pre-op team…' : 'Press Start on this patient’s card to begin their preparation.')+'</div>')+'</div><form class="console-reply" data-reply="'+esc(p.patientId)+'"><label for="reply-'+esc(p.patientId)+'">Reply as '+esc(p.name)+'</label><div><input id="reply-'+esc(p.patientId)+'" value="'+esc(drafts[p.patientId]||'')+'" placeholder="Type the patient’s reply…" autocomplete="off"'+(!p.sessionId || busy?' disabled':'')+'><button class="button compact"'+(!p.sessionId || busy?' disabled':'')+'>Send reply</button></div></form></div>';}).join('');
+    panes.forEach(function(p){var thread=$('thread-'+p.patientId);thread.scrollTop=thread.scrollHeight;});
+    $('outcomes').innerHTML = Object.keys(outcomes).map(function(id){var due=all.filter(function(p){return p.sessionId && p.checklist.some(function(i){return i.id===id && i.state!=='done' && (id==='physio' || i.dueStep===state.step+1);});});if(!due.length)return '';return '<div class="field outcome-field"><label for="outcome-'+id+'">'+({bloods:'Blood tests',ecg:'ECG',physio:'Physio exercises'}[id])+'</label><select id="outcome-'+id+'" data-outcome="'+id+'"><option value="random">Random · protocol weights</option>'+outcomes[id].map(function(o){return '<option value="'+o[0]+'"'+(picks[id]===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select><small>'+esc(due.map(function(p){return p.name;}).join(', '))+'</small></div>';}).join('') || '<div class="empty">No outcomes due at the next step. Complete the conversation and book the tests first.</div>';
+  }
+  async function refresh(force) { try { var data = await Promise.all([request('/api/demo/state'),request('/api/board')]); state=data[0];board=data[1];var next=JSON.stringify(data);if(force || next!==lastRender){lastRender=next;render();} if(!busy)$('notice').textContent='Live records loaded · '+board.cohortCount+' patients · '+board.featuredPatientIds.length+' featured'; } catch(e){console.error(e);$('notice').textContent=e.message;} }
+  async function mutate(path, body, message) { if(busy)return;busy=true;$('notice').textContent=message;render();try{state=await request(path,body);await refresh(true);$('notice').textContent='Updated. All three screens follow this preparation state.';}catch(e){console.error(e);$('notice').textContent=e.message;}finally{busy=false;contacting=null;render();} }
+  document.addEventListener('click',function(e){var start=e.target.closest('[data-start]'),select=e.target.closest('[data-select]');if(start){selected=start.dataset.start;var p=state.patients[selected];if(p.sessionId){render();$('conversations').scrollIntoView({block:'center'});return;}contacting=selected;var phone=$('phone-number').value.trim();mutate('/api/demo/start',phone?{patientId:selected,phone:phone}:{patientId:selected},'Contacting '+p.name+'…');}else if(select){selected=select.dataset.select;render();}});
+  $('conversations').addEventListener('input',function(e){var form=e.target.closest('[data-reply]');if(form)drafts[form.dataset.reply]=e.target.value;});
+  $('conversations').addEventListener('submit',function(e){e.preventDefault();var id=e.target.dataset.reply,text=(drafts[id]||'').trim();if(!text || busy)return;drafts[id]='';mutate('/api/demo/reply',{patientId:id,text:text},'Sending reply…');});
+  $('outcomes').addEventListener('change',function(e){if(e.target.dataset.outcome)picks[e.target.dataset.outcome]=e.target.value;});
+  $('advance').onclick=function(){mutate('/api/demo/step',{direction:1,outcomes:picks},'Advancing one week and checking results…');};
+  $('rewind').onclick=function(){mutate('/api/demo/step',{direction:-1},'Restoring the previous preparation step…');};
+  $('reset').onclick=function(){picks={};drafts={};mutate('/api/demo/reset',{},'Creating a fresh world and reading its cohort…');};
+  refresh();setInterval(function(){refresh(false);},3000);
+})();
+</script>
+</body></html>

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-op team · Voice handset</title>
+<link rel="stylesheet" href="/pathway.css">
+<style>
+body{margin:0;background:#eef3f7;color:#172b40;font-family:Arial,sans-serif}.handset{max-width:470px;margin:40px auto;padding:32px;background:white;border-radius:24px;box-shadow:0 8px 30px #172b4015;text-align:center}.nhs{background:#005eb8;color:white;font-weight:bold;font-style:italic;display:inline-block;padding:5px 13px;font-size:26px}.avatar{width:84px;height:84px;border-radius:50%;background:#e3f0fb;color:#005eb8;display:grid;place-items:center;font-size:34px;margin:24px auto 12px}h1{font-size:26px;margin:12px 0}p{line-height:1.5}.muted{color:#566575;font-size:14px}select{width:100%;padding:12px;border:1px solid #ccd5dc;border-radius:8px;background:white;font-size:15px}button{padding:14px 24px;border:0;border-radius:24px;font-size:16px;cursor:pointer;background:#007f3b;color:white}button:disabled{opacity:.45;cursor:default}#end{background:#b82222}#mute{background:#425563}.controls{display:flex;justify-content:center;gap:10px;margin:24px 0}#status{min-height:24px;color:#005eb8;font-weight:bold}#transcript{text-align:left;max-height:320px;overflow:auto;border-top:1px solid #e3e8ed;margin-top:20px}.message{padding:10px 0;border-bottom:1px solid #eef1f4;font-size:14px;line-height:1.5}.message strong{display:block;color:#526475;font-size:12px;margin-bottom:3px}a{color:#005eb8}
+</style>
+</head>
+<body><main class="handset">
+<div class="nhs">NHS</div><div class="avatar">☎</div>
+<p class="muted" id="callLabel">Browser voice · Incoming pre-op contact</p>
+<h1>Northbank pre-op team</h1>
+<p>Getting ready for your operation</p>
+<select id="patient" aria-label="Patient"><option value="">Loading patients…</option></select>
+<p class="muted" id="patientDetail"></p>
+<div class="controls"><button id="answer" disabled>Answer</button><button id="mute" hidden>Mute</button><button id="end" hidden>End</button></div>
+<p id="status" role="status">Loading…</p>
+<p class="muted">AI-generated voice. Use headphones for a clear conversation.<br>This is a browser conversation.</p>
+<a href="/console.html">Back to demo console</a>
+<div id="transcript" aria-live="polite"></div>
+<audio id="speech" autoplay></audio>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let state, peer, channel, stream, connected = false, busy = false, muted = false, cursor = 0, polling = false, audioUrl;
+let activePatient = '', activeRun = '', generation = 0;
+const requestedPatient = new URLSearchParams(location.search).get('patient');
+const status = text => $('status').textContent = text;
+async function api(path, body) {
+  const response = await fetch(path, {signal:AbortSignal.timeout(30000), ...(body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {})});
+  if (!response.ok) { let detail; try { detail = await response.json(); } catch {} throw new Error(detail?.error || `Request failed (${response.status})`); }
+  return response;
+}
+function mic() { stream?.getAudioTracks().forEach(track => track.enabled = connected && !busy && !muted); }
+function render() {
+  const patient = state?.patients[$('patient').value];
+  $('patientDetail').textContent = patient ? `${patient.name} · ${patient.procedureLabel}` : 'Start a patient in the demo console first.';
+  $('transcript').replaceChildren();
+  for (const entry of patient?.transcript || []) {
+    const div = document.createElement('div'); div.className = 'message';
+    const label = document.createElement('strong'); label.textContent = entry.from === 'agent' ? 'Pre-op team' : entry.from === 'patient' ? 'You' : 'Update';
+    div.append(label, document.createTextNode(entry.text)); $('transcript').append(div);
+  }
+  $('transcript').scrollTop = $('transcript').scrollHeight;
+}
+async function speak(index, turn) {
+  busy = true; mic(); status('Pre-op team speaking…');
+  const response = await api('/api/demo/voice/speak', {patientId:activePatient,transcriptIndex:index});
+  const blob = await response.blob();
+  if (!connected || turn !== generation) return;
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = URL.createObjectURL(blob); $('speech').src = audioUrl;
+  await new Promise((resolve,reject) => {
+    $('speech').onended = resolve;
+    $('speech').onerror = () => reject(new Error('Audio playback failed'));
+    $('speech').play().catch(reject);
+  });
+}
+async function refresh(speakNew = true) {
+  if (polling) return;
+  polling = true;
+  try {
+    state = await (await api('/api/demo/state')).json();
+    if (connected && (state.runId !== activeRun || !state.patients[activePatient])) { end(); status('Demo reset. Select the patient again.'); return; }
+    render();
+    if (connected && !busy && speakNew) {
+      const turn = generation, entries = state.patients[activePatient].transcript;
+      while (cursor < entries.length && connected && turn === generation) {
+        const index = cursor++;
+        if (entries[index].from === 'agent') await speak(index, turn);
+      }
+      busy = false;
+      if (connected && state.patients[activePatient].status === 'clinical_review') { end(); status('Clinical review requested. Conversation ended.'); }
+      else { mic(); if (connected) status(muted ? 'Microphone muted' : 'Listening…'); }
+    }
+  } catch (error) { if (connected) end(); status(error.message); }
+  finally { polling = false; }
+}
+async function inbound(text) {
+  if (!text.trim() || !connected || busy) return;
+  busy = true; mic(); status('Pre-op team is checking…');
+  try {
+    await api('/api/demo/reply', {patientId:activePatient,text});
+    busy = false; await refresh(); mic();
+  } catch (error) { end(); status(error.message); }
+}
+function end() {
+  generation++; connected = false; busy = false;
+  $('speech').pause(); $('speech').onended?.();
+  channel?.close(); peer?.close(); stream?.getTracks().forEach(track => track.stop());
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  $('answer').hidden = false; $('answer').disabled = false; $('end').hidden = $('mute').hidden = true; $('patient').disabled = false;
+  $('callLabel').textContent = 'Browser voice · Contact ended'; status('Conversation ended');
+}
+$('end').onclick = end;
+$('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? 'Unmute' : 'Mute'; mic(); status(muted ? 'Microphone muted' : 'Listening…'); };
+$('patient').onchange = render;
+$('answer').onclick = async () => {
+  $('answer').disabled = true; status('Connecting audio…');
+  try {
+    activePatient = $('patient').value;
+    if (!state.patients[activePatient]?.transcript.length) throw new Error('Start this patient in the demo console first.');
+    activeRun = state.runId; generation++; muted = false;
+    stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    stream.getAudioTracks().forEach(track => track.enabled = false);
+    peer = new RTCPeerConnection();
+    stream.getTracks().forEach(track => peer.addTrack(track, stream));
+    channel = peer.createDataChannel('oai-events');
+    channel.onmessage = event => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'conversation.item.input_audio_transcription.completed') inbound(data.transcript);
+      if (data.type === 'conversation.item.input_audio_transcription.failed') { end(); status('Could not hear that reply. Please reconnect.'); }
+      if (data.type === 'error') { console.error('[voice]', data.error?.type); end(); status('Audio connection error. Please reconnect.'); }
+    };
+    channel.onopen = async () => {
+      connected = true; $('answer').hidden = true; $('end').hidden = $('mute').hidden = false; $('patient').disabled = true;
+      $('callLabel').textContent = 'Browser voice · Connected';
+      const entries = state.patients[activePatient].transcript;
+      cursor = entries.findLastIndex(entry => entry.from === 'agent'); if (cursor < 0) cursor = entries.length;
+      await refresh();
+    };
+    peer.onconnectionstatechange = () => { if (['failed','disconnected'].includes(peer.connectionState)) { end(); status('Audio disconnected. Please reconnect.'); } };
+    const offer = await peer.createOffer(); await peer.setLocalDescription(offer);
+    const response = await api('/api/demo/voice/connect', {patientId:activePatient,sdp:offer.sdp});
+    await peer.setRemoteDescription({type:'answer',sdp:await response.text()});
+  } catch (error) { end(); status(error.message); }
+};
+(async () => {
+  try {
+    const available = await (await api('/api/demo/voice/status')).json();
+    await refresh(false);
+    $('patient').replaceChildren();
+    for (const patient of Object.values(state?.patients || {})) {
+      const option = document.createElement('option'); option.value = patient.patientId; option.textContent = `${patient.name}${patient.transcript.length ? '' : ' · not started'}`; $('patient').append(option);
+    }
+    if (requestedPatient && state?.patients[requestedPatient]) $('patient').value = requestedPatient;
+    render(); $('answer').disabled = !available.available || !$('patient').value;
+    status(available.available ? 'Ready to answer' : 'Voice is unavailable');
+  } catch (error) { status(error.message); }
+})();
+setInterval(() => refresh(), 3000);
+window.addEventListener('beforeunload', () => { stream?.getTracks().forEach(track => track.stop()); peer?.close(); });
+</script>
+</body>
+</html>
