@@ -432,6 +432,13 @@
 .patient-tab { font: inherit; font-size: 13px; cursor: pointer; color: var(--nhs-blue); background: white; border: 1px solid var(--nhs-border); border-radius: 3px; padding: 7px 10px; }
 .patient-tab.active { color: white; background: var(--nhs-blue); border-color: var(--nhs-blue); }
 .console-thread { height: 330px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 20px 4px; }
+.care-flow { border-left: 4px solid var(--nhs-blue, #005eb8); padding: 20px; margin: 20px 0; background: #fff; }
+.care-flow h2 { margin: 4px 0 12px; }
+.care-flow p { margin: 8px 0; }
+.care-flow-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px; }
+.care-sync { font-size: 12px; color: var(--nhs-secondary-text); }
+.board-row[data-selected] { outline: 3px solid #005eb8; outline-offset: -3px; }
+.preop-links { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; margin: 12px 0; }
 .console-thread .msg { font-size: 14px; animation: none; }
 .console-reply label { display: block; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
 .console-reply > div { display: flex; gap: 10px; }

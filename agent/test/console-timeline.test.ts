@@ -11,12 +11,14 @@ function harness(booked = false) {
   const elements = new Map<string,any>(), requests: any[] = []
   const el = (id: string) => { if (!elements.has(id)) elements.set(id, {textContent:'',innerHTML:'',value:'',disabled:false,addEventListener(){},scrollIntoView(){}}); return elements.get(id) }
   let poll: ()=>Promise<void>
-  const ctx = {document:{getElementById:el,addEventListener(){}},setInterval(fn:()=>Promise<void>){poll=fn},console:{error(){}},fetch:async(path:string,options:any)=>{
+  const ctx: any = {URLSearchParams, location:{search:''}, history:{replaceState(){}}, document:{getElementById:el,querySelector:el,addEventListener(){}},setInterval(fn:()=>Promise<void>){poll=fn},console:{error(){}},fetch:async(path:string,options:any)=>{
     if(options && stepError)return {ok:false,json:async()=>({error:stepError})}
     if(options){ const body=JSON.parse(options.body); requests.push({path,method:options.method,contentType:options.headers['Content-Type'],body}); assert.equal(path,'/api/demo/step'); if(body.direction===1){state.snapshots.push(structuredClone(state));state.step++;if(booked){state.patients.p.checklist[1].state='done';state.patients.p.results.push({itemId:'bloods',step:state.step});state.patients.p.transcript.push({at:2,from:'agent',text:'Your blood results are normal.'})}}else state=state.snapshots.pop() }
     const data=path==='/api/board'?{step:state.step,rows:Object.values(state.patients),featuredPatientIds:['p'],cohortCount:1,notReadyCount:1}:state
     const captured=structuredClone(data);if(!options && holdReads)await new Promise<void>(resolve=>held.push(resolve));return {ok:true,json:async()=>captured}
   }}
+  ctx.window=ctx
+  runInNewContext(readFileSync(new URL('../../preop-progress.js', import.meta.url),'utf8'),ctx)
   runInNewContext(script,ctx)
   return {el,requests,failStep:(message:string)=>{stepError=message},holdReads:()=>{holdReads=true},allowNewReads:()=>{holdReads=false},releaseReads:()=>{holdReads=false;held.splice(0).forEach(resolve=>resolve())},poll:async()=>{poll!();await tick()},ready:tick,click:async(id:string)=>{el(id).onclick();await tick();await tick()},state:()=>state}
 }

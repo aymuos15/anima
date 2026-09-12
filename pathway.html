@@ -169,6 +169,7 @@
   </div>
 </div>
 
+<script src="preop-progress.js"></script>
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
@@ -176,7 +177,7 @@
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
   var PATIENTS = [];
-  var demoState = null, demoBoard = null, preopSignature = '', transcriptSignature = '';
+  var demoState = null, demoBoard = null, preopSignature = '', transcriptSignature = '', demoRefreshVersion = 0;
   var requestedPatient = new URLSearchParams(location.search).get('patient');
   var itemColours = { not_started: 'grey', pending: 'orange', booked: 'blue', done: 'green', review: 'red' };
   var itemStates = { not_started: 'Not started', pending: 'Pending', booked: 'Booked', done: 'Done', review: 'Review' };
@@ -197,11 +198,13 @@
     var done = run.checklist.filter(function (i) { return i.state === 'done'; }).length;
     var surgeryDate = confirmedSurgeryDate(run, pathway);
     var heading = '<section class="card preop-card"><h2>Getting ready for your operation</h2><p>' + esc(run.procedureLabel) + '</p><p class="caption">' + (surgeryDate === null ? 'Your hospital is confirming your operation date.' : esc(fmt(surgeryDate)) + surgeryCountdown({surgeryDate: new Date(surgeryDate).toISOString()}, pathway.now)) + '</p>';
+    var flow = preopProgress(run, demoState.step), query = '?patient=' + encodeURIComponent(run.patientId);
+    var next = '<div class="care-flow"><p class="caption">' + esc(run.name) + ' · ' + esc(run.patientId) + ' · Week ' + demoState.step + '</p><strong>' + esc(flow.stage) + '</strong><p>' + esc(flow.next) + '</p>' + (flow.canReply ? '<button class="text-button" data-next-messages>Open messages to continue</button>' : '') + '<div class="preop-links"><a href="console.html' + query + '">Care team conversation</a><a href="board.html' + query + '">This patient on the clinician board</a></div><p class="care-sync" data-care-sync>Live checklist shared with your care team</p></div>';
     var progress = '<div class="readiness-summary"><strong>' + (run.status === 'clinical_review' ? 'Clinical review needed' : done === 5 ? 'Ready for theatre' : 'Your preparation') + '</strong><span>' + done + ' of 5 complete</span></div><div class="readiness-track" role="progressbar" aria-label="Surgery preparation" aria-valuemin="0" aria-valuemax="5" aria-valuenow="' + done + '"><span style="width:' + done * 20 + '%"></span></div>';
     var pills = '<div class="checklist-pills">' + run.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '">' + (i.state === 'done' ? '✓ ' : '') + esc(i.label) + ' · ' + itemStates[i.state] + '</span>'; }).join('') + '</div>';
-    $('preop-home').innerHTML = heading + progress + pills + '</section>';
-    $('preop-pathway').innerHTML = heading + progress + '<ul class="preop-items">' + run.checklist.map(function (i) { return '<li><div><strong>' + esc(i.label) + '</strong><span class="tag tag--' + itemColours[i.state] + '">' + itemStates[i.state] + '</span></div>' + (i.detail ? '<p>' + esc(i.detail) + '</p>' : '') + '</li>'; }).join('') + '</ul></section>';
-    $('live-note').textContent = 'Your conversation with the pre-op team. Replies here and by iMessage follow the same preparation.';
+    $('preop-home').innerHTML = heading + progress + pills + next + '</section>';
+    $('preop-pathway').innerHTML = heading + progress + '<ul class="preop-items">' + run.checklist.map(function (i) { return '<li><div><strong>' + esc(i.label) + '</strong><span class="tag tag--' + itemColours[i.state] + '">' + itemStates[i.state] + '</span></div>' + (i.detail ? '<p>' + esc(i.detail) + '</p>' : '') + '</li>'; }).join('') + '</ul>' + next + '</section>';
+    $('live-note').textContent = 'Your conversation and preparation checklist stay in sync with your care team.';
     var signature = JSON.stringify(run.transcript);
     if (signature !== transcriptSignature) {
       var hadMessages = transcriptSignature && transcriptSignature !== '[]'; transcriptSignature = signature;
@@ -210,14 +213,17 @@
       if (hadMessages && last && last.from === 'agent') notify(last.text);
       scrollThread();
     }
-    $('composer-input').disabled = !run.sessionId || busy;
-    $('composer').querySelector('button').disabled = !run.sessionId || busy;
+    $('composer-input').disabled = !run.sessionId || busy || run.status === 'clinical_review';
+    $('composer').querySelector('button').disabled = !run.sessionId || busy || run.status === 'clinical_review';
     renderHome(); renderPathway();
   }
   async function refreshDemo() {
+    if (busy) return;
+    var refreshId = ++demoRefreshVersion;
     try {
       var responses = await Promise.all([api('/api/demo/state'), api('/api/board')]);
-      if (!responses[0].patients || !responses[1].rows) return;
+      if (refreshId !== demoRefreshVersion || busy) return;
+      if (!responses[0].patients || !responses[1].rows) throw new Error('Preparation unavailable');
       var changedWorld = demoState && demoState.runId !== responses[0].runId;
       demoState = responses[0]; demoBoard = responses[1];
       var ids = demoBoard.featuredPatientIds.concat(Object.keys(demoState.patients).filter(function (id) { return !demoBoard.featuredPatientIds.includes(id); }));
@@ -230,8 +236,11 @@
       var signature = JSON.stringify({ step: demoState.step, patient: preopRun() });
       if (preopSignature !== signature) { preopSignature = signature; renderPreop(); if (patient) loadPathway().catch(console.error); }
       if (palette.hasAttribute('data-open')) renderPalette();
-    } catch (e) { console.error(e); }
+      document.querySelectorAll('[data-care-sync]').forEach(function(el){el.textContent='Synced at '+new Date().toLocaleTimeString('en-GB')+' · updates every 3 seconds';});
+    } catch (e) { console.error(e); if(refreshId===demoRefreshVersion){$('live-note').textContent='Connection unavailable — showing your last loaded preparation.';document.querySelectorAll('[data-care-sync]').forEach(function(el){el.textContent='Not synced — waiting for connection';});} }
   }
+
+  document.addEventListener('click',function(e){if(e.target.closest('[data-next-messages]'))showView('messages');});
 
   var STAGES = [
     ['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']
@@ -281,7 +290,7 @@
   /* ---------- API ---------- */
   function api(path, body) {
     return fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined)
-      .then(function (r) { return r.json(); });
+      .then(function (r) { return r.json().then(function(data){if(!r.ok)throw new Error(data.error||'Connection unavailable');return data;}); });
   }
 
   function loadPathway() {
@@ -503,7 +512,7 @@
     if (!v || busy) return;
     $('composer-input').value = '';
     if (preopRun()) {
-      var gen = generation; busy = true; renderPreop();
+      var gen = generation; demoRefreshVersion++; busy = true; renderPreop();
       api('/api/demo/reply', { patientId: patient.id, text: v }).then(function (state) {
         if (gen !== generation) return;
         busy = false;
