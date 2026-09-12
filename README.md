@@ -2,11 +2,13 @@
 
 NHS App style patient pathway view with an AI care team agent, over a synthetic NHS simulator.
 
-Live: https://anima-pathway.netlify.app
+Local development only. Chat uses gpt-5.6-luna with low reasoning through Codex OAuth.
 
 ```bash
 npm install
-MODEL_PROVIDER=gemini GEMINI_API_KEY=... npm run dev   # simulator key in agent/key-agent.txt
+npm run dev   # simulator key in agent/key-agent.txt; signed-in Codex CLI required
 ```
 
-Setup, deployment and conventions: [AGENTS.md](AGENTS.md).
+The dev command starts or reuses the local OAuth proxy automatically. Open http://127.0.0.1:8790/.
+
+Setup and conventions: [AGENTS.md](AGENTS.md).

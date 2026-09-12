@@ -68,7 +68,7 @@ export const server = createServer(async (req, res) => {
         } } } })
       }
       console.log(`[chat] ${patientId ?? out.sessionId} ${out.status} ${Date.now() - t0}ms yields=${out.yieldedTools?.length ?? 0}${out.error ? ' error=' + out.error : ''}`)
-      json(res, 200, { sessionId: out.sessionId, status: out.status, text: out.output.text ?? '', yieldedTools: out.yieldedTools ?? [], error: out.error })
+      json(res, 200, { sessionId: out.sessionId, status: out.status, text: out.output.text ?? '', textId: out.output.items?.at(-1)?.id, yieldedTools: out.yieldedTools ?? [], error: out.error })
       return
     }
 
@@ -125,7 +125,7 @@ export const server = createServer(async (req, res) => {
     if (file.includes('..')) { res.writeHead(404).end(); return }
     try {
       const data = await readFile(join(PUBLIC, file))
-      res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(data)
+      res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' }).end(data)
     } catch {
       res.writeHead(404).end('not found')
     }
@@ -136,5 +136,5 @@ export const server = createServer(async (req, res) => {
 })
 
 if (!SERVERLESS) {
-  server.listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${MODEL_NAME} via ${process.env.MODEL_PROVIDER ?? 'auto'} ${process.env.OPENAI_BASE_URL ?? ''})`))
+  server.listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (${MODEL_NAME}, low reasoning, Codex OAuth via ${process.env.OPENAI_BASE_URL})`))
 }

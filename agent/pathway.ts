@@ -1,4 +1,5 @@
 import { sim, SITES, type Resource, type Site, type Patient } from './sim.js'
+import { preparationFor } from './preparation.js'
 
 export type Stage = 'referred' | 'assessed' | 'waiting' | 'treated' | 'discharged' | 'other'
 
@@ -72,6 +73,8 @@ export interface RepeatMedicine {
 }
 
 export interface Pathway {
+  operationDate: number | null
+  preparation: ReturnType<typeof preparationFor>
   patient: Patient | null
   now: number
   currentStage: Stage
@@ -243,7 +246,10 @@ async function fetchPathway(patientId: string): Promise<Pathway> {
   const medicines = buildMedicines(unique, raw, capacity)
   const letters = buildLetters(raw)
   const repeats = buildRepeats(ehr, medicines)
-  return { patient, now, currentStage: current, stagesReached: reached, blockers, events: unique, capacity, medicines, letters, repeats, errors }
+  const surgery = unique.filter((e) => e.kind === 'surgery').at(-1)
+  // A waiting record's dueAt is a target, not a confirmed booking.
+  const operationDate = surgery && ['booked', 'scheduled', 'confirmed'].includes(surgery.status) ? surgery.dueAt ?? null : null
+  return { operationDate, preparation: preparationFor(patientId), patient, now, currentStage: current, stagesReached: reached, blockers, events: unique, capacity, medicines, letters, repeats, errors }
 }
 
 function num(v: unknown): number | undefined { return typeof v === 'number' ? v : undefined }

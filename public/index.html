@@ -238,7 +238,7 @@
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
   var PATIENTS = [
-    { id: 'SIM-000007', name: 'Mohammed Ali', type: 'Elective surgery' },
+    { id: 'SIM-000007', name: 'Mohammed Ali', type: 'Surgery' },
     { id: 'SIM-000504', name: 'Ben Cooper', type: 'MSK referral' },
     { id: 'SIM-000023', name: 'George Brown', type: 'Knee replacement' },
     { id: 'SIM-000002', name: 'George Evans', type: 'Referral returned' },
@@ -246,12 +246,6 @@
     { id: 'SIM-000001', name: 'Amira Khan', type: 'Medicines and discharge' },
     { id: 'SIM-000009', name: 'Thomas Chen', type: 'Asthma, repeat inhalers' },
     { id: 'SIM-000026', name: 'Freya Wilson', type: 'Hypertension, repeat tablets' }
-  ];
-  // Preparation checklist. Static for now; not yet derived from records.
-  var CHECKLIST = [
-    { label: 'Blood test', mandatory: true, done: false },
-    { label: 'ECG', mandatory: true, done: true },
-    { label: 'Physiotherapy', mandatory: true, done: false }
   ];
   var RX_STAGES = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
   // extend the demo switcher with the mined example patients
@@ -285,6 +279,7 @@
   /* ---------- views ---------- */
   function showView(name) {
     current = name;
+    $('service-name').style.display = name === 'messages' ? 'none' : '';
     document.querySelectorAll('.view').forEach(function (v) { if (v.id === 'view-' + name) v.setAttribute('data-active', ''); else v.removeAttribute('data-active'); });
     document.querySelectorAll('.bottom-nav a[data-view]').forEach(function (a) { if (a.dataset.view === name) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
     if (name === 'messages') { unread = 0; badge.dataset.count = '0'; latest.removeAttribute('data-show'); $('composer').setAttribute('data-show', ''); scrollThread(); }
@@ -331,14 +326,12 @@
   function stageIndex(s) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === s) return i; return -1; }
 
   function operationDate() {
-    if (!pathway) return null;
-    var ops = (pathway.events || []).filter(function (e) { return e.kind === 'surgery' && e.dueAt; });
-    return ops.length ? ops[ops.length - 1].dueAt : null;
+    return pathway ? pathway.operationDate : null;
   }
   function ledeText() {
     if (!pathway) return '';
     var d = operationDate();
-    return d ? 'The date of your operation is: ' + fmt(d) : 'You do not have a date yet';
+    return d ? 'The date of your operation is: ' + fmt(d) : 'Operation date awaiting confirmation';
   }
 
   function renderPathway() {
@@ -366,7 +359,7 @@
         dd.appendChild(detail);
         var panel = el('div', 'step-panel');
         var list = el('ul', 'checklist');
-        CHECKLIST.forEach(function (c) {
+        ((pathway.preparation && pathway.preparation.items) || []).forEach(function (c) {
           var item = el('li', 'check' + (c.done ? ' check--done' : ''));
           item.appendChild(el('span', 'box', c.done ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>' : ''));
           var label = el('span', 'label', esc(c.label));
@@ -388,8 +381,11 @@
     var co = $('callout'); co.innerHTML = '';
     var blockers = (pathway.blockers || []).concat((pathway.medicines && pathway.medicines.blockers) || []);
     co.appendChild(el('h2', null, blockers.length ? 'Important' : 'What happens next'));
-    if (blockers.length) blockers.slice(0, 3).forEach(function (b) { co.appendChild(el('p', null, esc(b))); });
-    else co.appendChild(el('p', null, 'Nothing is blocking your pathway right now. Your care team will message you when something changes.'));
+    if (patient.id === 'SIM-000007') {
+      co.appendChild(el('p', null, 'Your preparation plan must be complete before the procedure. Remember to stop consuming alcohol and stop taking blood-thinning medication one week in advance. Stop eating from midnight before the surgery.'));
+    }
+    if (blockers.length && patient.id !== 'SIM-000007') blockers.slice(0, 3).forEach(function (b) { co.appendChild(el('p', null, esc(b))); });
+    else if (patient.id !== 'SIM-000007') co.appendChild(el('p', null, 'Nothing is blocking your pathway right now. Your care team will message you when something changes.'));
 
     var med = pathway.medicines;
     var mc = $('medicines-card');
@@ -526,7 +522,17 @@
 
   function addTeam(text) {
     var m = el('div', 'msg msg--team');
-    text.split(/\n\n+/).forEach(function (p) { m.appendChild(el('p', null, esc(p))); });
+    var list = null;
+    text.split(/\n/).forEach(function (line) {
+      var bullet = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.+)/);
+      if (bullet) {
+        if (!list) { list = el('ul', 'message-list'); m.appendChild(list); }
+        list.appendChild(el('li', null, esc(bullet[1])));
+      } else {
+        list = null;
+        if (line.trim()) m.appendChild(el('p', null, esc(line)));
+      }
+    });
     m.appendChild(el('span', 'stamp', stamp()));
     thread.appendChild(m); scrollThread(); notify(text);
   }
@@ -539,7 +545,7 @@
     var box = el('div', 'chips');
     options.forEach(function (o) {
       var b = el('button', 'chip', esc(o.label)); b.type = 'button';
-      b.addEventListener('click', function () { box.remove(); addMe(o.label); o.then(); });
+      b.addEventListener('click', function () { if (busy) return; addMe(o.label); o.then(); });
       box.appendChild(b);
     });
     thread.appendChild(box); scrollThread();
@@ -555,11 +561,25 @@
       case 'schedule_visit': return 'Arrange a home visit: ' + (a.title || '') + (a.reason ? '. ' + a.reason : '');
       case 'progress_referral': return 'Move your referral forward (' + (a.command || '') + ')' + (a.reason ? '. ' + a.reason : '');
       case 'share_record': return 'Share a record with ' + (a.target || 'the service') + (a.reason ? '. ' + a.reason : '');
-      default: return y.name + ' ' + JSON.stringify(a);
+      case 'order_test': return 'Request a blood test: ' + (a.title || 'Blood test') + (a.reason ? '. ' + a.reason : '');
+      case 'prescription_action':
+        var actions = { link_stock: 'Arrange medicine supply', review: 'Review your prescription', accept: 'Accept your prescription', dispense: 'Prepare your medicine', collect: 'Mark your medicine as collected' };
+        return (actions[a.command] || 'Update your prescription') + (a.reason ? '. ' + a.reason : '');
+      case 'hospital_command': return 'Update your hospital care' + (a.reason ? ': ' + a.reason : '');
+      case 'complete_task': return 'Mark the practice task as complete' + (a.reason ? ': ' + a.reason : '');
+      default: return a.reason || a.title || 'Ask your care team to carry out the proposed action.';
     }
   }
 
   var pending = [];   // yielded tools awaiting the patient's answer
+  var shownTextIds = new Set();
+
+  function setBusy(value) {
+    busy = value;
+    document.querySelectorAll('.chips button, #composer button').forEach(function (b) { b.disabled = value; });
+    $('composer').setAttribute('aria-busy', String(value));
+    typing(value);
+  }
 
   function friendlyError(err) {
     var e = String(err);
@@ -570,18 +590,20 @@
   }
 
   function handleTurn(out) {
-    typing(false); busy = false;
+    setBusy(false);
     if (out.error) { addEvent(friendlyError(out.error)); return; }
+    document.querySelectorAll('.chips').forEach(function (c) { c.remove(); });
     sessionId = out.sessionId;
     pending = (out.yieldedTools || []).slice();
-    if (out.text) {
+    if (out.text && (!out.textId || !shownTextIds.has(out.textId))) {
+      if (out.textId) shownTextIds.add(out.textId);
       addTeam(out.text);
       alerts.unshift({ id: 'msg' + Date.now(), level: 'info', text: out.text, stamp: stamp() });
       alerts = alerts.slice(0, 4);
     }
     (out.yieldedTools || []).forEach(function (y) {
       var desc = describeYield(y);
-      if (desc) addEvent('Proposed action: ' + desc);
+      if (desc) addTeam(desc);
       var text = y.name === 'ask_patient' ? (y.args.question || '') : desc;
       alerts.unshift({ id: y.callId, level: 'action', text: text, stamp: stamp() });
       if (y.name === 'ask_patient') {
@@ -600,17 +622,16 @@
 
   function turn(input) {
     if (busy) return;
-    busy = true; typing(true);
+    setBusy(true);
     var gen = generation;
     api('/api/chat', { sessionId: sessionId, patientId: patient.id, input: input })
       .then(function (out) { if (gen === generation) handleTurn(out); })
-      .catch(function (e) { if (gen === generation) { typing(false); busy = false; addEvent('Could not reach your care team. Check your connection and try again.'); } });
+      .catch(function (e) { if (gen === generation) { setBusy(false); addEvent('Could not reach your care team. Check your connection and try again.'); } });
   }
 
   function resume(callId, input) {
+    if (busy) return;
     alerts = alerts.filter(function (a) { return a.id !== callId; }); renderHome();
-    pending = pending.filter(function (y) { return y.callId !== callId; });
-    document.querySelectorAll('.chips').forEach(function (c) { c.remove(); });
     turn({ tools: [{ callId: callId, input: input }] });
   }
 
@@ -618,13 +639,16 @@
     e.preventDefault();
     var v = $('composer-input').value.trim();
     if (!v || busy) return;
+    if (pending.length && pending[0].name !== 'ask_patient') {
+      addEvent('Please use “Yes, go ahead” or “No, not now” to answer this proposal.');
+      return;
+    }
     $('composer-input').value = '';
     addMe(v);
     if (pending.length) {
       // a typed reply answers the open proposal rather than starting a new turn
       var y = pending[0];
-      var yes = /^(y|yes|ok|okay|sure|go ahead|please|yes please|fine)\b/i.test(v);
-      resume(y.callId, y.name === 'ask_patient' ? { choice: v } : { approved: yes, note: v });
+      resume(y.callId, { choice: v });
       return;
     }
     turn({ message: v });
@@ -634,7 +658,7 @@
   function loadPatient(meta) {
     generation += 1;
     patient = { id: meta.id, name: meta.name, conditions: [], needs: [], goals: [], localIds: {} };
-    pathway = null; sessionId = null; busy = false; alerts = []; unread = 0; badge.dataset.count = '0';
+    pathway = null; sessionId = null; pending = []; shownTextIds.clear(); setBusy(false); alerts = []; unread = 0; badge.dataset.count = '0';
     thread.innerHTML = ''; latest.removeAttribute('data-show'); hideBanner(); typing(false);
     $('service-name').textContent = 'NHS App';
     $('live-note').textContent = 'Live: messages are written by the care team agent from your records.';

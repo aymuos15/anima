@@ -6,7 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx agent/server.ts",
+    "dev": "tsx scripts/dev.ts",
     "typecheck": "tsc --noEmit -p .",
     "test": "tsx --test agent/test/*.test.ts",
     "build:data": "tsx agent/build-dataset.ts",
@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@animahealth/adk": "^0.6.0",
-    "@google/genai": "^2.22.0",
     "better-sqlite3": "^13.0.3",
     "openai": "^5.23.2",
     "pg": "^8.23.0",

@@ -25,6 +25,8 @@ export function readTools(app: typeof App) {
       const p = await buildPathway(ctx.args.patientId)
       return {
         patient: p.patient,
+        preparation: p.preparation,
+        operationDate: p.operationDate === null ? null : fmtDate(p.operationDate),
         simTime: fmtDate(p.now),
         currentStage: p.currentStage,
         stagesReached: p.stagesReached,

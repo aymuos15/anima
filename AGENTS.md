@@ -1,12 +1,12 @@
 # AGENTS.md
 
-Everything needed to run, change and deploy this project on a fresh machine. Read this before touching code.
+Everything needed to run and change this project locally. Read this before touching code. Local-only: do not deploy. Use only gpt-5.6-luna with low reasoning through Codex OAuth; no Gemini or API-key fallback.
 
 ## What this is
 
 An NHS App style patient view (`public/index.html`) over a synthetic NHS neighbourhood simulator, with an AI care team agent that reads the patient's records and proposes actions the patient approves. A staff operations console (`public/admin.html`) sits beside it. All data is synthetic.
 
-Live: https://anima-pathway.netlify.app (patient app) and https://anima-pathway.netlify.app/admin (console).
+Local: http://127.0.0.1:8790/ (patient app) and http://127.0.0.1:8790/admin (console).
 
 ## Layout
 
@@ -33,8 +33,8 @@ Requires Node 22 (`.nvmrc`).
 npm install
 # simulator key: create or join a world, copy apiKey into agent/key-agent.txt
 curl -s https://sim.animahacks.com/api/keys -H 'Content-Type: application/json' -d '{"teamName":"my-team"}'
-# model key: Gemini free tier works
-MODEL_PROVIDER=gemini GEMINI_API_KEY=... npm run dev
+# Sign in to Codex CLI first. Starts or reuses the local OAuth proxy automatically.
+npm run dev
 ```
 
 Open http://127.0.0.1:8790/ (press Continue, Ctrl+K switches patient) or http://127.0.0.1:8790/admin.
@@ -46,9 +46,7 @@ Sessions go to `agent/sessions.db` locally. `ADK_STORE=memory` skips the file. H
 | Variable | Where | Meaning |
 |---|---|---|
 | `SIM_KEY` | Netlify (secret). Local: `agent/key-agent.txt` instead | Simulator API key |
-| `MODEL_PROVIDER` | Both | `gemini` or `openai` |
-| `GEMINI_API_KEY` or `OPENAI_API_KEY` | Both | Model key for the chosen provider |
-| `MODEL` | Optional | Model name. Defaults `gemini-3.6-flash` or `gpt-5.6-luna` |
+| `CODEX_PROXY_PORT` | Local | Default 8788. Proxy uses the Codex CLI OAuth login. Model fixed to `gpt-5.6-luna`, reasoning `low`. Provider/model/API-key environment overrides are not used. |
 | `DATABASE_URL` | Netlify (secret) | Postgres connection string for sessions. Must be the Supabase **pooler** host (see Deploy). Unset locally. |
 | `ADK_STORE` | Optional | `memory` to disable persistent sessions |
 | `PORT` | Local only | Default 8790 |
@@ -63,7 +61,7 @@ npm test            # builds five featured pathways against the live simulator
 npm run build       # typecheck + bundle the function into netlify/functions-dist
 ```
 
-## Deploy (Netlify + Supabase)
+## Historical deployment notes (inactive — do not deploy)
 
 Netlify serves `public/` from its CDN and runs `agent/server.ts` inside one function for `/api/*`. Supabase Postgres holds chat sessions. The ADK store creates its own tables on first use, so there are no migrations.
 
@@ -73,7 +71,7 @@ Steps on a new machine:
 
 1. `npm i -g netlify-cli supabase` and log in to both.
 2. `netlify link` to the site, `supabase link --project-ref <ref>`.
-3. Set variables in Netlify, production context: `SIM_KEY`, `MODEL_PROVIDER`, `GEMINI_API_KEY` (or OpenAI), `DATABASE_URL`.
+3. Historical deployment required simulator, model and database credentials. The current local OAuth configuration is not deployable.
    `DATABASE_URL` must use the session pooler, port 5432, because Netlify functions have no IPv6 and the direct `db.<ref>.supabase.co` host is IPv6-only:
    `postgresql://postgres.<ref>:<db-password>@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require`
    The password is set in the Supabase dashboard under Database settings.
@@ -97,6 +95,6 @@ Known limits: a chat turn takes 5 to 20 seconds and is not streamed. The pathway
 
 - Read-only by default. Every write tool and `advance_clock` yields for approval before touching the simulator.
 - Never invent records. Agent prompts live in `agent/agents.ts`.
-- The Preparation checklist in the patient app is hardcoded in `public/index.html` for now.
+- Mohammed's Preparation checklist is curated in `agent/preparation.ts` and shared through the pathway response with the UI and agent. It is demo data, not simulator orders/results.
 - Featured demo patients are listed in `agent/tools/admin.ts` and repeated in the two HTML files. Keep them in sync.
 - Rebuild cohort statistics with `SIM_KEY=... npm run build:data` when the world changes materially.

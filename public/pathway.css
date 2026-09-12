@@ -288,9 +288,12 @@
   .msg .stamp { display: block; font-size: 12px; color: var(--nhs-secondary-text); margin-top: 6px; }
   .msg--me .stamp { color: rgba(255,255,255,0.8); }
   .msg--event { align-self: stretch; max-width: none; background: var(--nhs-pale-grey); border: 1px dashed var(--nhs-border); font-size: 14px; color: var(--nhs-secondary-text); text-align: center; animation: none; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-self: flex-start; animation: pop 260ms ease-out; }
-  .chip { font: inherit; font-size: 15px; font-weight: 700; padding: 8px 14px; border-radius: 100px; border: 2px solid var(--nhs-blue); background: var(--nhs-white); color: var(--nhs-blue); cursor: pointer; }
+  .message-list { margin: 8px 0; padding-left: 22px; }
+  .message-list li { margin: 4px 0; }
+  .chips { display: flex; flex-direction: column; gap: 8px; align-self: stretch; animation: pop 260ms ease-out; }
+  .chip { font: inherit; font-size: 15px; font-weight: 700; text-align: left; min-height: 44px; padding: 10px 14px; border-radius: 8px; border: 2px solid var(--nhs-blue); background: var(--nhs-white); color: var(--nhs-blue); cursor: pointer; }
   .chip:active { background: var(--nhs-blue); color: var(--nhs-white); }
+  .chip:disabled { opacity: 0.55; cursor: wait; }
   .typing { align-self: flex-start; display: flex; gap: 4px; padding: 12px 14px; background: var(--nhs-white); border: 1px solid var(--nhs-border); border-radius: 12px; border-bottom-left-radius: 4px; }
   .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--nhs-secondary-text); animation: blink 1s infinite; }
   .typing span:nth-child(2) { animation-delay: 0.2s; }
