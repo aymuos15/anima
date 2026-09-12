@@ -1,12 +1,17 @@
 // Netlify Functions 2.0 entry point (ESM). The Node http server in agent/server.ts is started once per
 // function instance on a random loopback port and every /api/* request is proxied to it.
 // Bundled by `npm run build:fn` into netlify/functions-dist (see netlify.toml for why).
+import Module from 'node:module'
 import * as genai from '@google/genai'
 import { server } from '../../agent/server.ts'
 
-// The ADK loads model SDKs with a runtime require() by package name. Nothing is on disk beside this
-// bundle, so the require shim in the esbuild banner (package.json build:fn) looks here first.
-globalThis.__bundled = { '@google/genai': genai }
+// The ADK loads model SDKs lazily with its own createRequire(). Nothing exists on disk beside this
+// bundle, so serve the bundled copy for those package names from Node's module loader.
+const bundled = { '@google/genai': genai }
+const originalRequire = Module.prototype.require
+Module.prototype.require = function (id) {
+  return Object.prototype.hasOwnProperty.call(bundled, id) ? bundled[id] : originalRequire.apply(this, arguments)
+}
 
 let ready = null
 

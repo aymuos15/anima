@@ -11,7 +11,7 @@
     "test": "tsx --test agent/test/*.test.ts",
     "build:data": "tsx agent/build-dataset.ts",
     "proxy": "tsx scripts/codex-proxy.ts",
-    "build:fn": "esbuild netlify/functions/api.mjs --bundle --platform=node --target=node22 --format=esm --banner:js=\"import { createRequire as __cr } from 'node:module'; const __req = __cr(import.meta.url); const require = (id) => (globalThis.__bundled && globalThis.__bundled[id]) || __req(id);\" --external:better-sqlite3 --external:pg-native --external:playwright --external:playwright-core --external:jsdom --external:@mozilla/readability --outfile=netlify/functions-dist/api.mjs",
+    "build:fn": "esbuild netlify/functions/api.mjs --bundle --platform=node --target=node22 --format=esm --banner:js=\"import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);\" --external:better-sqlite3 --external:pg-native --external:playwright --external:playwright-core --external:jsdom --external:@mozilla/readability --outfile=netlify/functions-dist/api.mjs",
     "build": "npm run typecheck && npm run build:fn"
   },
   "dependencies": {
