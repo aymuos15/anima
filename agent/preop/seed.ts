@@ -1,4 +1,5 @@
 import { sim, type Patient, type Resource } from '../sim.js'
+import { readInBatches } from './batch-read.js'
 
 const title = 'Demo scenario: elective orthopaedic pre-operative assessment'
 const support = (patient: Patient) => patient.needs.some(need => ['Transport', 'Carer involvement', 'Offline contact', 'Interpreter'].includes(need))
@@ -16,6 +17,19 @@ export async function seedStallWorld(): Promise<void> {
   }
   const candidates = arthritis.items.filter(patient => patient.conditions.some(condition => /\b(?:arthritis|osteoarthritis)\b/i.test(condition)))
   const referred = new Set(referrals.resources.filter(resource => resource.kind === 'referral').map(resource => resource.patientId))
+  // GP-created referrals can be absent from the referrals site's inventory,
+  // including when the action committed but its response timed out. Read every
+  // candidate before writing so an uncertain inventory cannot cause a replay.
+  const records = await readInBatches(candidates, async patient => {
+    const view = await sim.view('gp', patient.id)
+    if ((view.resourceTotal ?? view.resources.length) > view.resources.length) {
+      throw new Error(`Cannot prepare stall world from an incomplete GP inventory for ${patient.id}`)
+    }
+    return view.resources.filter(resource => resource.patientId === patient.id
+      && resource.kind === 'referral' && resource.owner === 'hospital'
+      && (resource.title === title || /\b(?:orthopaedic|orthopedic|elective|knee|hip|msk|joint)\b/i.test(resource.title)))
+  })
+  for (const resource of records.flat()) referred.add(resource.patientId)
   const eligible = new Set([
     ...elective.items.filter(patient => patient.conditions.some(condition => /awaiting elective surgery/i.test(condition))).map(patient => patient.id),
     ...candidates.filter(patient => referred.has(patient.id)).map(patient => patient.id),
