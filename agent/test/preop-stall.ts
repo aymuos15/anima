@@ -1,0 +1,121 @@
+import assert from 'node:assert/strict'
+import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'node:fs'
+import { sim, type Patient } from '../sim.js'
+const mock = process.argv.includes('--mock'), writes: any[] = [], file = new URL('../demo-state.json', import.meta.url)
+const prior = mock && existsSync(file) ? readFileSync(file) : undefined
+let exitCode = 0
+if (mock) {
+  process.env.PREOP_MODEL_OFF = '1'; process.env.PORT = '8791'
+  const now = Date.UTC(2026, 8, 12, 7), resources: any[] = []
+  const people: Patient[] = ['PLAIN', 'MODIFIED'].map((id, i) => ({ id: `HARNESS-${id}`, name: `Harness ${id}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i ? ['diabetes', 'CKD'] : [])], needs: i ? ['Transport'] : [], goals: [], localIds: {} }))
+  sim.clock = async () => ({ now, paused: true })
+  sim.patients = async q => ({ total: 2, items: q.startsWith('HARNESS-') ? people.filter(p => p.id === q) : people })
+  sim.view = async (_site, patient) => ({ now, resources: [{ id: 'surgery-' + patient, patientId: patient, kind: 'surgery', title: 'Elective joint surgery', status: 'booked', createdAt: now, dueAt: now + 28 * 86400000 }, ...resources.filter(r => r.patientId === patient)] })
+  sim.get = async () => ({ appointments: resources.filter(r => r.kind === 'appointment'), sessions: ['AM', 'PM'].map((period, i) => ({ id: `session-${period}`, title: `Practice nurse ${period}`, status: 'open', version: 1, data: { mode: 'in-person', startsAt: now + (i ? 7 : 2) * 3600000, endsAt: now + (i ? 9 : 4) * 3600000, slotMinutes: 15 } })) })
+  sim.action = async (_site, action) => { writes.push(action); const r = { ...action, id: `written-${writes.length}`, kind: action.type === 'book_appointment' ? 'appointment' : action.type === 'order_test' ? 'blood-test-order' : action.type === 'save_problem' ? 'problem' : 'task', owner: 'gp', data: action, createdAt: now }; resources.push(r); return { resource: r } }
+  sim.advance = async minutes => { writes.push({ type: 'clock', minutes }); return {} }
+  sim.setKey = () => {}
+  sim.newWorld = async () => ({ apiKey: 'harness-key' })
+  const { resetState } = await import('../preop/store.js'); resetState('harness', [])
+  await import('../server.js')
+}
+const base = process.env.PREOP_BASE ?? `http://127.0.0.1:${mock ? 8791 : 8790}`
+async function api(path: string, body?: unknown) { const r = await fetch(base + path, { method: body === undefined ? 'GET' : 'POST', headers: { 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); const out = await r.json() as any; assert.equal(r.status, 200, JSON.stringify(out)); return out }
+try {
+  const { classify } = await import('../preop/rules.js'), { assertAllowed } = await import('../imessage.js'), { lintOutbound, conversation } = await import('../preop/agent.js')
+  const board = await api('/api/board'), plain = board.rows.find((p: any) => !p.transcript.length && !p.modifiers.length) ?? board.rows.find((p: any) => !p.transcript.length)
+  const modified = board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId && p.modifiers.includes('add_hba1c')) ?? board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId)
+  assert.ok(plain && modified, 'two unstarted patients required')
+  const reply = (patientId: string, text: string) => api('/api/demo/reply', { patientId, text })
+  await api('/api/demo/start', { patientId: plain.patientId }); let state = await reply(plain.patientId, 'yes')
+  const bloods = (s: any) => s.patients[plain.patientId].checklist.find((i: any) => i.id === 'bloods')
+  const count = bloods(state).simRefs.length; state = await reply(plain.patientId, 'perhaps'); assert.equal(bloods(state).simRefs.length, count)
+  for (const text of ['1', 'I take paracetamol', 'No allergies or previous problems', 'no', 'yes']) state = await reply(plain.patientId, text)
+  const run = state.patients[plain.patientId]; assert.equal(run.checklist.filter((i: any) => i.state === 'done').length, 3); assert.ok(bloods(state).simRefs.some((r: any) => r.kind === 'appointment'))
+  const beforeStep = run.transcript.length
+  state = await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal', physio: 'physio_done' } }); assert.equal(state.patients[plain.patientId].status, 'ready')
+  const eventTexts = state.patients[plain.patientId].transcript.slice(beforeStep).filter((x: any) => x.from === 'agent').map((x: any) => x.text)
+  assert.deepEqual(eventTexts, [classify('bloods_normal', run).patientExplanation, classify('ecg_normal', run).patientExplanation])
+  await api('/api/demo/start', { patientId: modified.patientId }); for (const text of ['yes', '2', 'No medicines', 'No allergies']) await reply(modified.patientId, text)
+  let historyBefore: unknown
+  if (mock) {
+    const { app } = await import('../app.js')
+    const pending = await app.sessions.get((await api('/api/demo/state')).patients[modified.patientId].sessionId)
+    pending!.input.message('BEFORE_REWIND_BOUNDARY'); await app.sessions.commit(pending!)
+    historyBefore = JSON.stringify((await app.sessions.get(pending!.id))!.events)
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal' } })
+    const future = await app.sessions.get(pending!.id)
+    future!.input.message('FUTURE_HISTORY_MUST_DISAPPEAR'); future!.state.update({ daysToSurgery: 0 }); await app.sessions.commit(future!)
+  }
+  const beforeFlag = writes.length; state = await reply(modified.patientId, 'yes'); assert.equal(state.patients[modified.patientId].status, 'clinical_review')
+  const safety = classify('red_flag_raised', state.patients[modified.patientId]).patientExplanation; assert.equal(state.patients[modified.patientId].transcript.at(-1).text, safety)
+  const afterFlag = state.patients[modified.patientId].transcript.length; state = await reply(modified.patientId, 'Can we continue?'); assert.equal(state.patients[modified.patientId].transcript.length, afterFlag + 1)
+  if (mock) { assert.deepEqual(writes.slice(beforeFlag).map(w => w.type), ['create_task']); assert.deepEqual(writes.filter(w => w.type === 'order_test' && w.patientId === modified.patientId).map(w => w.bloodTestOrder.panelId), ['fbc', 'ue', 'hba1c']) }
+  if (mock) {
+    const { app } = await import('../app.js')
+    state = await api('/api/demo/step', { direction: -1 })
+    const restored = state.patients[modified.patientId]
+    assert.equal(conversation(restored).escalated, false)
+    assert.equal(conversation(restored).stage, 'red_flag')
+    assert.equal(conversation(restored).pendingQuestion, 'anaesthetic_red_flag')
+    const restoredSession = await app.sessions.get(restored.sessionId)
+    assert.equal(JSON.stringify(restoredSession!.events), historyBefore, 'ADK history rewinds exactly')
+    assert.equal(restoredSession!.state.daysToSurgery, 21)
+    state = await reply(modified.patientId, 'no')
+    assert.equal(conversation(state.patients[modified.patientId]).stage, 'transport', 'restored conversation continues')
+    const refreshed = await app.sessions.get(restored.sessionId)
+    assert.equal(refreshed!.state.checklist.find((i: any) => i.id === 'anaesthetic_questions').state, 'done', 'typed ADK state refreshes on the later turn')
+    assert.equal(refreshed!.state.daysToSurgery, 21)
+    assert.ok(!JSON.stringify(refreshed!.events).includes('FUTURE_HISTORY_MUST_DISAPPEAR'))
+  }
+  assert.throws(() => assertAllowed('+19999999999'), /IMESSAGE_ALLOW/)
+  for (const p of Object.values(state.patients) as any[]) for (const m of p.transcript) if (m.from === 'agent') lintOutbound(m.text)
+  const finalBoard = await api('/api/board'); assert.equal(finalBoard.notReadyCount, finalBoard.cohortCount - finalBoard.rows.filter((p: any) => p.readiness === 1).length)
+  if (mock) { const clockWrites = writes.filter(w => w.type === 'clock').length; await api('/api/demo/step', { direction: -1 }); assert.equal(writes.filter(w => w.type === 'clock').length, clockWrites); const reset = await api('/api/demo/reset', {}); assert.notEqual(reset.world, 'harness'); assert.equal(Object.keys(reset.patients).length, 2) }
+  if (mock) {
+    const { app } = await import('../app.js')
+    const { renderConversation } = await import('../preop/agent.js')
+    const { getState } = await import('../preop/store.js')
+    const p = getState().patients[plain.patientId]
+    const examples = [
+      ['Paracetamol', 'Do you have any allergies or have you had problems with a previous anaesthetic?', 'Thanks. Any allergies or problems with an anaesthetic?'],
+      ['perhaps', 'Shall I ask the practice to help with that preparation barrier?', 'Would you like the practice to call you?'],
+    ]
+    process.env.PREOP_MODEL_OFF = '0'
+    try {
+      for (const [inbound, canonical, rejected] of examples) {
+        let calls = 0
+        const replyTurn = async (input: any) => { calls++; return { sessionId: input.sessionId, status: 'completed', output: { text: rejected }, yieldedTools: [] } }
+        assert.equal(await renderConversation(p, canonical, inbound, replyTurn as any), canonical)
+        assert.equal(calls, 1, 'invalid model wording never triggers a model retry')
+      }
+      const canonical = examples[0][1], valid = 'Thank you. ' + canonical
+      assert.equal(await renderConversation(p, canonical, 'Paracetamol', (async (input: any) => ({ sessionId: input.sessionId, status: 'completed', output: { text: valid }, yieldedTools: [] })) as any), valid, 'valid ordinary ADK output is retained')
+    } finally { process.env.PREOP_MODEL_OFF = '1' }
+    await api('/api/demo/start', { patientId: plain.patientId })
+    const before = structuredClone(conversation(getState().patients[plain.patientId]))
+    const agentCount = getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length
+    const commit = app.sessions.commit
+    app.sessions.commit = async () => { throw new Error('Injected session commit failure') }
+    try {
+      const failed = await fetch(base + '/api/demo/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: plain.patientId, text: 'yes' }) })
+      assert.equal(failed.status, 500)
+      assert.deepEqual(conversation(getState().patients[plain.patientId]), before, 'failed delivery rolls back stage and turn count')
+      assert.equal(getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length, agentCount)
+    } finally { app.sessions.commit = commit }
+    const action = sim.action
+    sim.action = async () => { throw new Error('Injected urgent task API failure') }
+    try {
+      const failed = await fetch(base + '/api/demo/reply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: plain.patientId, text: 'I have chest pain' }) })
+      assert.equal(failed.status, 500)
+      assert.ok(conversation(getState().patients[plain.patientId]).escalated, 'task failure must never undo clinical escalation')
+      assert.equal(getState().patients[plain.patientId].transcript.at(-1)!.text, classify('red_flag_raised', getState().patients[plain.patientId]).patientExplanation)
+      const count = getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length
+      await reply(plain.patientId, 'Can we continue?')
+      assert.equal(getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length, count)
+    } finally { sim.action = action }
+  }
+  const evidence = { gates: { ambiguousNoWrite: true, appointmentAndOrders: true, fiveDoneReady: true, exactEvents: true, affirmativeContextEscalation: true, modelOff: mock, noLaterQuestion: true, whitelist: true, boardCounts: true, rewindAndReset: mock, restoredADKHistory: mock, restoredPendingQuestion: mock, refreshedTypedState: mock, modelQuestionFallback: mock, validModelOutputRetained: mock, failedDeliveryRollback: mock, failedTaskKeepsEscalation: mock }, transport: 'console', patientIds: [plain.patientId, modified.patientId], golden: { eventTexts, safety }, writes }
+  writeFileSync('/tmp/preop-stall-evidence.json', JSON.stringify(evidence, null, 2)); console.log(JSON.stringify(evidence.gates))
+} catch (error) { exitCode = 1; console.error(error) }
+finally { if (mock) { if (prior) writeFileSync(file, prior); else if (existsSync(file)) unlinkSync(file); process.exit(exitCode) } else process.exitCode = exitCode }

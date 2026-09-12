@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const SIM_BASE = process.env.SIM_BASE ?? 'https://sim.animahacks.com'
-const KEY = (process.env.SIM_KEY ?? readFileSync(join(here, '..', 'key.txt'), 'utf8')).trim()
+let KEY = (process.env.SIM_KEY ?? readFileSync(join(here, '..', 'key.txt'), 'utf8')).trim()
 
 export const SITES = ['gp', 'hospital', 'pharmacy', 'community', 'diagnostics', 'wearables', 'referrals'] as const
 export type Site = (typeof SITES)[number]
@@ -31,6 +31,8 @@ async function request(method: string, path: string, body?: unknown, headers: Re
 }
 
 export const sim = {
+  setKey: (key: string, persist = false) => { KEY = key.trim(); if (persist) writeFileSync(join(here, 'key-agent.txt'), KEY + '\n', { mode: 0o600 }) },
+  newWorld: (teamName: string) => request('POST', '/api/keys', { teamName }) as Promise<{ apiKey: string }>,
   get: (path: string) => request('GET', path),
 
   patients: (q: string) => request('GET', `/api/sites/gp/patients?q=${encodeURIComponent(q)}`) as Promise<{ total: number; items: Patient[] }>,

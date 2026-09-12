@@ -50,11 +50,7 @@ export function readTools(app: typeof App) {
     description: 'List bookable GP appointment sessions (clinic lists) with their ids, versions and times. Needed before book_appointment.',
     schema: z.object({}),
     execute: async () => {
-      const v = await sim.view('gp', undefined, 500)
-      return v.resources
-        .filter((r) => r.kind === 'appointment-session' && r.status === 'open')
-        .slice(0, 12)
-        .map((r) => ({ sessionId: r.id, sessionVersion: r.version, title: r.title, startsAt: r.data?.startsAt, startsAtText: typeof r.data?.startsAt === 'number' ? fmtDate(r.data.startsAt as number) : undefined, endsAt: r.data?.endsAt, slotMinutes: r.data?.slotMinutes, mode: r.data?.mode, clinician: r.data?.clinician }))
+      return getAppointmentSessions()
     },
   })
 
@@ -70,4 +66,30 @@ export function readTools(app: typeof App) {
   })
 
   return [search_patients, get_patient_pathway, get_capacity, get_appointment_sessions, get_resource]
+}
+
+
+export async function getAppointmentSessions(late = false) {
+  const { now } = await sim.clock()
+  const options: Array<{ sessionId: string; sessionVersion: number; startsAt: number; startsAtText: string; title: string; period: string }> = []
+  for (let day = 0; day < 10 && options.length < 2; day++) {
+    const date = new Date(now + day * 86400000).toISOString().slice(0, 10)
+    const view = await sim.get(`/api/sites/gp/appointments?date=${date}`) as { sessions?: import('../sim.js').Resource[]; appointments?: import('../sim.js').Resource[] }
+    for (const period of ['AM', 'PM']) {
+      if (options.some(o => o.period === period)) continue
+      const candidates: typeof options = []
+      for (const r of view.sessions ?? []) {
+        if (r.status !== 'open' || r.data?.mode !== 'in-person' || !r.title.includes(period)) continue
+        const d = r.data!, increment = Number(d.slotMinutes ?? 15) * 60000
+        for (let at = Number(d.startsAt); at < Number(d.endsAt); at += increment) {
+          if (at <= now || (d.blockedSlots as Array<{ startsAt: number }> ?? []).some(b => b.startsAt === at)) continue
+          if ((view.appointments ?? []).some(a => a.status !== 'cancelled' && a.data?.sessionId === r.id && a.data?.startsAt === at)) continue
+          candidates.push({ sessionId: r.id, sessionVersion: r.version!, startsAt: at, startsAtText: fmtDate(at), title: r.title, period })
+        }
+      }
+      candidates.sort((a, b) => late ? b.startsAt - a.startsAt : a.startsAt - b.startsAt)
+      if (candidates[0]) options.push(candidates[0])
+    }
+  }
+  return options
 }

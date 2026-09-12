@@ -38,3 +38,5 @@ export const auditHook = {
     if (WRITE_TOOL_NAMES.has(result.name)) console.log(`[audit] ${result.name} -> ${result.error ?? JSON.stringify(result.result).slice(0, 240)}`)
   },
 }
+
+export { preopAgent } from './preop/agent.js'

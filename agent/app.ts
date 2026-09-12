@@ -14,6 +14,15 @@ export const schema = {
     blockers: z.array(z.string()).default([]),
     needs: z.array(z.string()).default([]),
     goals: z.array(z.string()).default([]),
+    procedureLabel: z.string().default('elective surgery'),
+    modifiers: z.array(z.string()).default([]),
+    conditions: z.array(z.string()).default([]),
+    surgeryDate: z.string().default(''),
+    daysToSurgery: z.number().default(28),
+    checklist: z.array(z.any()).default([]),
+    pendingEvent: z.any().optional(),
+    escalated: z.boolean().default(false),
+    wordingOnly: z.boolean().default(false),
   },
 }
 

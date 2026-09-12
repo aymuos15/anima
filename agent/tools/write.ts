@@ -71,6 +71,16 @@ export function writeTools(app: typeof App) {
       : declined(ctx.input?.note)),
   })
 
+  const order_test = app.tool({
+    name: 'order_test',
+    description: 'Propose a blood test order. Requires explicit patient approval.',
+    schema: z.object({ patientId: z.string(), panelId: z.enum(['fbc', 'ue', 'hba1c', 'lft', 'crp', 'lipids']), priority: z.enum(['routine', 'urgent']).default('routine'), collection: z.enum(['now', 'next-round']).default('next-round'), clinicalDetails: z.string() }),
+    yieldSchema: approval,
+    finalize: async (ctx) => (ctx.input?.approved
+      ? run('gp', { type: 'order_test', patientId: ctx.args.patientId, bloodTestOrder: { panel: ctx.args.panelId.toUpperCase(), specimen: 'Blood', panelId: ctx.args.panelId, priority: ctx.args.priority, collection: ctx.args.collection, clinicalDetails: ctx.args.clinicalDetails } })
+      : declined(ctx.input?.note)),
+  })
+
   const schedule_visit = app.tool({
     name: 'schedule_visit',
     description: 'Propose a community team home visit for the patient. Capacity is limited. Requires patient approval.',
@@ -99,7 +109,7 @@ export function writeTools(app: typeof App) {
       : declined(ctx.input?.note)),
   })
 
-  return [ask_patient, create_task, send_message, book_appointment, schedule_visit, progress_referral, share_record]
+  return [ask_patient, create_task, send_message, book_appointment, order_test, schedule_visit, progress_referral, share_record]
 }
 
-export const WRITE_TOOL_NAMES = new Set(['create_task', 'send_message', 'book_appointment', 'schedule_visit', 'progress_referral', 'share_record'])
+export const WRITE_TOOL_NAMES = new Set(['order_test', 'create_task', 'send_message', 'book_appointment', 'schedule_visit', 'progress_referral', 'share_record'])
