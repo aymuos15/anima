@@ -89,12 +89,12 @@
       <p class="text" id="latest-text"></p>
       <span class="open">Open message</span>
     </div>
-    <div class="card">
+    <div class="card" id="record-stages">
       <h2>Where you are</h2>
       <ol class="steps" id="steps"></ol>
     </div>
     <div class="warning-callout" id="callout"></div>
-    <div class="card">
+    <div class="card" id="record-capacity">
       <h2 id="details-title">Capacity</h2>
       <dl class="summary-list" id="details"></dl>
     </div>
@@ -103,7 +103,7 @@
       <ul class="timeline" id="timeline"></ul>
     </div>
     <button class="button" type="button" data-go="messages">Message your care team</button>
-    <div class="inset-text">
+    <div class="inset-text" id="record-explanation">
       <p>Live demonstration. This page is rebuilt from synthetic records across GP, hospital, pharmacy, community, diagnostics and referral systems every time your care team acts. The pathway stages are inferred from record types and dates, not held as a single record.</p>
     </div>
   </main>
@@ -187,8 +187,8 @@
     var done = run.checklist.filter(function (i) { return i.state === 'done'; }).length;
     var blocked = run.modifiers.includes('theatre_blocked');
     var heading = '<section class="card preop-card"><h2>Getting ready for your operation</h2><p>' + esc(run.procedureLabel) + '</p><p class="caption">' + (blocked ? 'Your hospital is confirming your operation date.' : esc(fmt(run.surgeryDate)) + ' · ' + (28 - demoState.step * 7) + ' days to go') + '</p>';
-    var progress = '<div class="readiness-summary"><strong>' + (run.status === 'clinical_review' ? 'Clinical review needed' : done === 5 ? 'Ready for theatre' : 'Your preparation') + '</strong><span>' + done + ' of 5 complete</span></div><div class="readiness-track"><span style="width:' + done * 20 + '%"></span></div>';
-    var pills = '<div class="checklist-pills">' + run.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '">' + (i.state === 'done' ? '✓ ' : '') + esc(i.label) + '</span>'; }).join('') + '</div>';
+    var progress = '<div class="readiness-summary"><strong>' + (run.status === 'clinical_review' ? 'Clinical review needed' : done === 5 ? 'Ready for theatre' : 'Your preparation') + '</strong><span>' + done + ' of 5 complete</span></div><div class="readiness-track" role="progressbar" aria-label="Surgery preparation" aria-valuemin="0" aria-valuemax="5" aria-valuenow="' + done + '"><span style="width:' + done * 20 + '%"></span></div>';
+    var pills = '<div class="checklist-pills">' + run.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '">' + (i.state === 'done' ? '✓ ' : '') + esc(i.label) + ' · ' + itemStates[i.state] + '</span>'; }).join('') + '</div>';
     $('preop-home').innerHTML = heading + progress + pills + '</section>';
     $('preop-pathway').innerHTML = heading + progress + '<ul class="preop-items">' + run.checklist.map(function (i) { return '<li><div><strong>' + esc(i.label) + '</strong><span class="tag tag--' + itemColours[i.state] + '">' + itemStates[i.state] + '</span></div>' + (i.detail ? '<p>' + esc(i.detail) + '</p>' : '') + '</li>'; }).join('') + '</ul></section>';
     $('live-note').textContent = 'Your conversation with the pre-op team. Replies here and by iMessage follow the same preparation.';
@@ -202,6 +202,7 @@
     }
     $('composer-input').disabled = !run.sessionId || busy;
     $('composer').querySelector('button').disabled = !run.sessionId || busy;
+    renderHome(); renderPathway();
   }
   async function refreshDemo() {
     try {
@@ -291,6 +292,12 @@
   function stageIndex(s) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === s) return i; return -1; }
 
   function tagFor() {
+    var run = preopRun();
+    if (run) {
+      if (run.status === 'clinical_review') return { text: 'Clinical review needed', cls: 'red' };
+      if (run.status === 'ready' || run.status === 'done') return { text: 'Ready for theatre', cls: 'green' };
+      return { text: run.status === 'not_contacted' ? 'Not started' : 'In progress', cls: run.status === 'not_contacted' ? 'grey' : 'blue' };
+    }
     if (!pathway) return { text: 'Loading', cls: 'grey' };
     var b = pathway.blockers || [];
     if (b.some(function (x) { return /rejected/.test(x); })) return { text: 'Needs attention', cls: 'red' };
@@ -300,6 +307,8 @@
   }
 
   function ledeText() {
+    var run = preopRun();
+    if (run) return run.status === 'clinical_review' ? 'Your pre-op team is reviewing your preparation.' : run.status === 'ready' || run.status === 'done' ? 'Your preparation checklist is complete. Your hospital team will confirm the operation arrangements.' : 'Follow your preparation checklist and messages from your pre-op team.';
     if (!pathway) return '';
     var b = pathway.blockers || [];
     if (b.length) return 'Something is holding your pathway up. Your care team is on it.';
@@ -309,9 +318,12 @@
 
   function renderPathway() {
     $('pw-caption').textContent = patient.name + ', NHS number ' + patient.id;
-    $('pw-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
+    var run = preopRun();
+    $('pw-title').textContent = run ? 'Your surgery preparation' : 'Your ' + condition().toLowerCase() + ' pathway';
+    ['record-stages', 'record-capacity', 'record-explanation'].forEach(function (id) { $(id).hidden = Boolean(run); });
     $('lede-text').textContent = ledeText();
     var t = tagFor(); var tag = $('pathway-tag'); tag.textContent = t.text; tag.className = 'tag tag--' + t.cls;
+    if (!pathway) { $('timeline').innerHTML = '<li>Loading your clinical record…</li>'; return; }
 
     var steps = $('steps'); steps.innerHTML = '';
     var cur = stageIndex(pathway.currentStage);
@@ -332,7 +344,8 @@
     var co = $('callout'); co.innerHTML = '';
     var blockers = pathway.blockers || [];
     co.appendChild(el('h2', null, blockers.length ? 'Important' : 'What happens next'));
-    if (blockers.length) blockers.slice(0, 3).forEach(function (b) { co.appendChild(el('p', null, esc(b))); });
+    if (run) { co.innerHTML = ''; co.appendChild(el('h2', null, 'What happens next')); co.appendChild(el('p', null, esc(ledeText()))); }
+    else if (blockers.length) blockers.slice(0, 3).forEach(function (b) { co.appendChild(el('p', null, esc(b))); });
     else co.appendChild(el('p', null, 'Nothing is blocking your pathway right now. Your care team will message you when something changes.'));
 
     var dl = $('details'); dl.innerHTML = '';
@@ -367,7 +380,10 @@
     $('home-name').textContent = firstName();
     var box = $('home-alerts'), empty = $('home-empty');
     box.innerHTML = '';
-    var ordered = alerts.slice().sort(function (a, b) { return (b.level === 'action') - (a.level === 'action'); });
+    var run = preopRun();
+    var lastMessage = run && run.transcript.filter(function (m) { return m.from === 'agent'; }).slice(-1)[0];
+    var ordered = run ? (lastMessage ? [{level: 'info', text: lastMessage.text, stamp: new Date(lastMessage.at).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'})}] : []) : alerts.slice().sort(function (a, b) { return (b.level === 'action') - (a.level === 'action'); });
+    if (lastMessage) { latestText.textContent = lastMessage.text; if (current !== 'messages') latest.setAttribute('data-show', ''); }
     ordered.forEach(function (a) {
       var card = el('div', 'alert alert--' + a.level);
       card.appendChild(el('div', 'alert-head', a.level === 'action' ? 'Reply needed' : 'From your care team'));
@@ -378,9 +394,9 @@
       row.appendChild(link); row.appendChild(el('span', 'stamp', '  ' + a.stamp));
       body.appendChild(row); card.appendChild(body); box.appendChild(card);
     });
-    empty.style.display = alerts.length ? 'none' : 'block';
+    empty.style.display = ordered.length ? 'none' : 'block';
     homeBadge.dataset.count = String(alerts.filter(function (a) { return a.level === 'action'; }).length);
-    $('home-pathway-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
+    $('home-pathway-title').textContent = run ? 'Your surgery preparation' : 'Your ' + condition().toLowerCase() + ' pathway';
     $('home-pathway-text').textContent = ledeText();
     var t = tagFor(); var htag = $('home-pathway-tag'); htag.textContent = t.text; htag.className = 'tag tag--' + t.cls;
   }
