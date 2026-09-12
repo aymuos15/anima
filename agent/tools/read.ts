@@ -33,6 +33,8 @@ export function readTools(app: typeof App) {
         blockers: p.blockers,
         capacity: p.capacity,
         medicines: p.medicines,
+        letters: p.letters.map((l) => ({ id: l.id, title: l.title, status: l.status, sentBy: l.sentBy, when: fmtDate(l.sentAt ?? l.createdAt), sections: Object.fromEntries(l.sections.map((s) => [s.key, s.text])) })),
+        repeatMedicines: p.repeats,
         recentEvents: p.events.slice(-25).map((e) => ({ id: e.id, when: fmtDate(e.createdAt), site: e.site, kind: e.kind, status: e.status, title: e.title, priority: e.priority, version: e.version, data: e.data })),
         errors: p.errors,
       }

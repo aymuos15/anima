@@ -11,6 +11,20 @@
   .composer input { flex: 1; height: 42px; padding: 6px 10px; font: inherit; border: 2px solid var(--nhs-secondary-text); border-radius: 4px; }
   .composer button { font: inherit; font-weight: 700; padding: 0 14px; background: var(--nhs-green); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
   #view-messages { padding-bottom: 140px; }
+  .letters { list-style: none; margin: 0 0 24px; padding: 0; }
+  .letters li { background: var(--nhs-white); border: 1px solid var(--nhs-border); border-left: 6px solid var(--nhs-blue); padding: 14px 16px; margin-bottom: 12px; cursor: pointer; }
+  .letters li:hover { background: var(--nhs-pale-grey); }
+  .letters .from { margin: 0 0 4px; font-size: 14px; color: var(--nhs-secondary-text); }
+  .letters .title { margin: 0 0 6px; font-weight: 700; }
+  .letters .open { font-size: 14px; color: var(--nhs-blue); text-decoration: underline; }
+  .letter-section { background: var(--nhs-white); border: 1px solid var(--nhs-border); padding: 16px; margin-bottom: 12px; }
+  .letter-section h2 { font-size: 18px; margin: 0 0 8px; }
+  .letter-section p { margin: 0; }
+  .rx-item { background: var(--nhs-white); border: 1px solid var(--nhs-border); padding: 14px 16px; margin-bottom: 12px; }
+  .rx-item .name { font-weight: 700; margin: 0 0 4px; display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .rx-item .meta { margin: 0; font-size: 14px; color: var(--nhs-secondary-text); }
+  .rx-item .note { margin: 6px 0 0; font-size: 14px; }
+  .rx-group { margin: 0 0 8px; font-size: 18px; }
   .live { font-size: 12px; color: var(--nhs-secondary-text); text-align: center; margin: 0 0 12px; }
 </style>
 </head>
@@ -70,8 +84,8 @@
       <h2>Quick links</h2>
       <ul class="quick">
         <li><a href="#" data-go="messages">Messages from your care team</a></li>
-        <li><a href="#">Your hospital letters</a></li>
-        <li><a href="#">Repeat prescriptions</a></li>
+        <li><a href="#" data-go="letters">Your hospital letters</a></li>
+        <li><a href="#" data-go="prescriptions">Repeat prescriptions</a></li>
         <li><a href="#" data-go="account">Your details</a></li>
       </ul>
     </div>
@@ -117,6 +131,35 @@
     </div>
     <p class="live" id="live-note"></p>
     <div class="thread" id="thread"></div>
+  </main>
+
+  <main class="content view" id="view-letters">
+    <a class="back-link" href="#" data-go="home">Back to home</a>
+    <p class="caption">Your hospital letters</p>
+    <h1>Letters about your care</h1>
+    <p class="lede">Letters sent from the hospital to you and your GP practice.</p>
+    <div class="empty" id="letters-empty" style="display:none">There are no hospital letters on your record yet. We will show them here as soon as they are sent.</div>
+    <ul class="letters" id="letters-list"></ul>
+  </main>
+
+  <main class="content view" id="view-letter">
+    <a class="back-link" href="#" data-go="letters">Back to your letters</a>
+    <p class="caption" id="letter-caption"></p>
+    <h1 id="letter-title"></h1>
+    <dl class="summary-list" id="letter-meta" style="margin-bottom:24px"></dl>
+    <div id="letter-body"></div>
+    <button class="button" type="button" data-go="messages">Ask about this letter</button>
+  </main>
+
+  <main class="content view" id="view-prescriptions">
+    <a class="back-link" href="#" data-go="home">Back to home</a>
+    <p class="caption">Repeat prescriptions</p>
+    <h1>Your medicines</h1>
+    <p class="lede">Medicines on your GP record and prescriptions in progress.</p>
+    <div class="empty" id="rx-empty" style="display:none">You have no repeat prescriptions on your record. If you think this is wrong, message your care team.</div>
+    <div id="rx-current"></div>
+    <div id="rx-past"></div>
+    <button class="button" type="button" data-go="messages">Message your care team about medicines</button>
   </main>
 
   <main class="content view" id="view-account">
@@ -180,7 +223,9 @@
     { id: 'SIM-000023', name: 'George Brown', type: 'Knee replacement' },
     { id: 'SIM-000002', name: 'George Evans', type: 'Referral returned' },
     { id: 'SIM-000070', name: 'Daniel Williams', type: 'Rheumatology, interpreter' },
-    { id: 'SIM-000001', name: 'Amira Khan', type: 'Medicines and discharge' }
+    { id: 'SIM-000001', name: 'Amira Khan', type: 'Medicines and discharge' },
+    { id: 'SIM-000009', name: 'Thomas Chen', type: 'Asthma, repeat inhalers' },
+    { id: 'SIM-000026', name: 'Freya Wilson', type: 'Hypertension, repeat tablets' }
   ];
   var RX_STAGES = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
   // extend the demo switcher with the mined example patients
@@ -246,7 +291,7 @@
       if (pathway && p.errors && p.errors.length && !(p.events || []).length) return; // sim outage: keep last good state
       pathway = p;
       if (p.patient) patient = p.patient;
-      renderPathway(); renderHome(); renderAccount();
+      renderPathway(); renderHome(); renderAccount(); renderLetters(); renderPrescriptions();
     });
   }
 
@@ -345,6 +390,69 @@
     fill('acc-details', [['NHS number', patient.id], ['Date of birth', patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''], ['Email', firstName().toLowerCase() + '@example.com'], ['Mobile', '07700 900 ' + patient.id.slice(-3)]]);
     fill('acc-care', [['GP practice', 'Riverside Practice'], ['GP record number', ids.gp || ''], ['Hospital', 'Northbank General'], ['Hospital number', ids.hospital || ''], ['Conditions', (patient.conditions || []).join('<br>')]]);
     fill('acc-matters', [['Needs', (patient.needs || []).join('<br>') || 'None recorded'], ['Goals', (patient.goals || []).join('<br>') || 'None recorded']]);
+  }
+
+  var RX_STATUS_TAG = { issued: 'blue', dispensed: 'orange', collected: 'green', ended: 'grey', open: 'orange', approved: 'blue', draft: 'grey', reviewed: 'blue' };
+  var RX_STATUS_TEXT = { issued: 'Sent to pharmacy', dispensed: 'Ready to collect', collected: 'Collected', ended: 'Ended', open: 'Being reviewed', approved: 'Approved', draft: 'Requested', reviewed: 'Reviewed' };
+
+  function renderLetters() {
+    var list = $('letters-list'); list.innerHTML = '';
+    var letters = (pathway && pathway.letters) || [];
+    $('letters-empty').style.display = letters.length ? 'none' : 'block';
+    letters.forEach(function (l) {
+      var li = el('li'); li.tabIndex = 0; li.setAttribute('role', 'button');
+      li.appendChild(el('p', 'from', esc((l.sentBy ? l.sentBy + ', ' : '') + 'Northbank General')));
+      li.appendChild(el('p', 'title', esc(l.title)));
+      var when = l.sentAt || l.createdAt;
+      li.appendChild(el('p', 'meta', esc(fmt(when)) + ' <span class="tag tag--' + (l.status === 'sent' || l.status === 'available' ? 'green' : 'grey') + '">' + esc(l.status === 'available' ? 'document' : l.status) + '</span>'));
+      li.appendChild(el('span', 'open', 'Read letter'));
+      var open = function () { renderLetter(l); showView('letter'); };
+      li.addEventListener('click', open);
+      li.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      list.appendChild(li);
+    });
+  }
+
+  function renderLetter(l) {
+    $('letter-caption').textContent = 'Northbank General' + (l.sentBy ? ', ' + l.sentBy : '');
+    $('letter-title').textContent = l.title;
+    var meta = $('letter-meta'); meta.innerHTML = '';
+    [['Date', fmt(l.sentAt || l.createdAt)], ['Status', l.status === 'available' ? 'Available' : l.status.charAt(0).toUpperCase() + l.status.slice(1)], ['Also sent to', 'Riverside Practice']].forEach(function (r) {
+      var row = el('div', 'summary-row'); row.appendChild(el('dt', null, esc(r[0]))); row.appendChild(el('dd', null, esc(r[1]))); meta.appendChild(row);
+    });
+    var body = $('letter-body'); body.innerHTML = '';
+    if (l.text) { var t = el('div', 'letter-section'); t.appendChild(el('p', null, esc(l.text))); body.appendChild(t); }
+    (l.sections || []).forEach(function (sec) {
+      var d = el('div', 'letter-section'); d.appendChild(el('h2', null, esc(sec.label))); d.appendChild(el('p', null, esc(sec.text))); body.appendChild(d);
+    });
+    if (!l.text && !(l.sections || []).length) body.appendChild(el('p', 'empty', 'This letter has no readable content on your record.'));
+  }
+
+  function rxCard(m) {
+    var card = el('div', 'rx-item');
+    var name = el('p', 'name'); name.appendChild(el('span', null, esc(m.term)));
+    name.appendChild(el('span', 'tag tag--' + (RX_STATUS_TAG[m.supplyStatus] || 'grey'), esc(RX_STATUS_TEXT[m.supplyStatus] || m.supplyStatus)));
+    card.appendChild(name);
+    var bits = [];
+    if (m.prescriptionType) bits.push(m.prescriptionType === 'repeat' ? 'Repeat prescription' : 'One-off prescription');
+    if (m.indication) bits.push('for ' + m.indication.toLowerCase());
+    if (m.route) bits.push(m.route);
+    if (bits.length) card.appendChild(el('p', 'meta', esc(bits.join(', '))));
+    var dates = [];
+    if (m.issueDate) dates.push('Issued ' + fmt(new Date(m.issueDate).getTime()));
+    if (m.reviewDate && m.isCurrent) dates.push('Review due ' + fmt(new Date(m.reviewDate).getTime()));
+    if (dates.length) card.appendChild(el('p', 'meta', esc(dates.join('. '))));
+    if (m.note && m.isCurrent) card.appendChild(el('p', 'note', esc(m.note)));
+    return card;
+  }
+
+  function renderPrescriptions() {
+    var cur = $('rx-current'), past = $('rx-past'); cur.innerHTML = ''; past.innerHTML = '';
+    var meds = (pathway && pathway.repeats) || [];
+    $('rx-empty').style.display = meds.length ? 'none' : 'block';
+    var current = meds.filter(function (m) { return m.isCurrent; }), ended = meds.filter(function (m) { return !m.isCurrent; });
+    if (current.length) { cur.appendChild(el('h2', 'rx-group', 'Current')); current.forEach(function (m) { cur.appendChild(rxCard(m)); }); }
+    if (ended.length) { past.appendChild(el('h2', 'rx-group', 'Past')); ended.forEach(function (m) { past.appendChild(rxCard(m)); }); }
   }
 
   function renderHome() {
@@ -479,7 +587,7 @@
     thread.innerHTML = ''; latest.removeAttribute('data-show'); hideBanner(); typing(false);
     $('service-name').textContent = 'NHS App';
     $('live-note').textContent = 'Live: messages are written by the care team agent from your records.';
-    renderHome(); renderAccount();
+    renderHome(); renderAccount(); renderLetters(); renderPrescriptions();
     loadPathway().then(function () { turn({ message: 'start' }); });
   }
 
