@@ -108,8 +108,9 @@
 
   /* pathway steps */
   .steps { list-style: none; margin: 0; padding: 0; }
-  .step { display: flex; gap: 16px; position: relative; padding-bottom: 24px; }
-  .step:last-child { padding-bottom: 0; }
+  .step { display: flex; gap: 16px; position: relative; }
+  .step > div:last-child { padding-bottom: 24px; }
+  .step:last-child > div:last-child { padding-bottom: 0; }
   .step .rail { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; }
   .step .marker {
     width: 24px; height: 24px; border-radius: 50%;
@@ -117,7 +118,7 @@
     background: var(--nhs-white);
     position: relative;
   }
-  .step .line { width: 4px; flex: 1; background: var(--nhs-border); margin-top: 4px; }
+  .step .line { width: 4px; flex: 1; background: var(--nhs-border); }
   .step--done .marker { background: var(--nhs-blue); border-color: var(--nhs-blue); }
   .step--done .marker::after {
     content: ""; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px;

@@ -27,8 +27,8 @@
   .rx-group { margin: 0 0 8px; font-size: 18px; }
   .step-details summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
   .step-details summary::-webkit-details-marker { display: none; }
-  .step-details summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-top: -4px; transition: transform .15s; }
-  .step-details[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+  .step-details summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-top: 2px; transition: transform .15s; }
+  .step-details[open] summary::after { transform: rotate(45deg); margin-top: -4px; }
   .step-details summary:focus-visible { outline: 4px solid var(--nhs-yellow); outline-offset: 2px; }
   .step-panel { margin-top: 8px; padding-left: 12px; border-left: 4px solid var(--nhs-border); min-height: 8px; }
   .live { font-size: 12px; color: var(--nhs-secondary-text); text-align: center; margin: 0 0 12px; }
@@ -83,7 +83,6 @@
     <div class="card">
       <h2 id="home-pathway-title"></h2>
       <p id="home-pathway-text"></p>
-      <p><span class="tag" id="home-pathway-tag"></span></p>
       <a href="#" class="alert-link" data-go="pathway">See your pathway</a>
     </div>
     <div class="card">
@@ -101,7 +100,7 @@
     <a class="back-link" href="#" data-go="home">Back to home</a>
     <p class="caption" id="pw-caption"></p>
     <h1 id="pw-title"></h1>
-    <p class="lede"><span id="lede-text"></span> <span class="tag" id="pathway-tag"></span></p>
+    <p class="lede" id="lede-text"></p>
     <div class="latest" id="latest" role="button" tabindex="0">
       <p class="from">Your care team</p>
       <p class="text" id="latest-text"></p>
@@ -310,28 +309,21 @@
 
   function stageIndex(s) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === s) return i; return -1; }
 
-  function tagFor() {
-    if (!pathway) return { text: 'Loading', cls: 'grey' };
-    var b = pathway.blockers || [];
-    if (b.some(function (x) { return /rejected/.test(x); })) return { text: 'Needs attention', cls: 'red' };
-    if (pathway.currentStage === 'waiting') return { text: 'Waiting', cls: 'orange' };
-    if (pathway.currentStage === 'discharged') return { text: 'Complete', cls: 'green' };
-    return { text: 'In progress', cls: 'blue' };
+  function operationDate() {
+    if (!pathway) return null;
+    var ops = (pathway.events || []).filter(function (e) { return e.kind === 'surgery' && e.dueAt; });
+    return ops.length ? ops[ops.length - 1].dueAt : null;
   }
-
   function ledeText() {
     if (!pathway) return '';
-    var b = pathway.blockers || [];
-    if (b.length) return 'Something is holding your pathway up. Your care team is on it.';
-    if (pathway.currentStage === 'waiting') return 'You are waiting for the next step.';
-    return 'Your pathway is moving.';
+    var d = operationDate();
+    return d ? 'The date of your operation is: ' + fmt(d) : 'You do not have a date yet';
   }
 
   function renderPathway() {
     $('pw-caption').textContent = patient.name + ', NHS number ' + patient.id;
     $('pw-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
     $('lede-text').textContent = ledeText();
-    var t = tagFor(); var tag = $('pathway-tag'); tag.textContent = t.text; tag.className = 'tag tag--' + t.cls;
 
     var steps = $('steps'); steps.innerHTML = '';
     var cur = stageIndex(pathway.currentStage);
@@ -492,7 +484,6 @@
     homeBadge.dataset.count = String(alerts.filter(function (a) { return a.level === 'action'; }).length);
     $('home-pathway-title').textContent = 'Your ' + condition().toLowerCase() + ' pathway';
     $('home-pathway-text').textContent = ledeText();
-    var t = tagFor(); var htag = $('home-pathway-tag'); htag.textContent = t.text; htag.className = 'tag tag--' + t.cls;
   }
 
   /* ---------- chat ---------- */
