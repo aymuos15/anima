@@ -6,7 +6,7 @@
 <main class="demo-main board-main">
 <div class="demo-title"><div><p class="caption">Elective surgery · pre-operative care</p><h1>Ready for theatre</h1><p id="cohort-count" class="lede">Loading booked patients from the live world…</p></div><div class="live-label"><span></span> Live cohort <small id="board-clock"></small></div></div>
 <div class="board-legend"><span class="tag tag--grey">Not contacted</span><span class="tag tag--orange">In progress</span><span class="tag tag--green">Ready</span><span class="tag tag--red">Clinical review</span><span class="tag tag--blue">Done</span></div>
-<div class="board-table-wrap"><table class="board-table"><thead><tr><th>Patient</th><th>Procedure</th><th>Surgery date</th><th>Days to go</th><th>Pre-op checklist</th><th>Readiness</th><th>Status</th><th>Last contact</th></tr></thead><tbody id="rows"><tr><td colspan="8">Reading the cohort…</td></tr></tbody></table></div>
+<div class="board-table-wrap"><table class="board-table"><thead><tr><th>Patient</th><th>Procedure</th><th>Surgery date</th><th>Preparation week</th><th>Pre-op checklist</th><th>Readiness</th><th>Status</th><th>Last contact</th></tr></thead><tbody id="rows"><tr><td colspan="8">Reading the cohort…</td></tr></tbody></table></div>
 <p class="demo-footer">Northbank General · Coordinated with OpenAI and the Anima ADK <span id="board-world"></span></p>
 </main>
 <script>
@@ -20,12 +20,11 @@
     try {
       var res = await fetch('/api/board'); if (!res.ok) throw new Error('Board unavailable'); var board = await res.json();
       $('cohort-count').textContent = 'Booked for surgery in this world: ' + board.cohortCount + ' · not ready: ' + board.notReadyCount;
-      $('board-clock').textContent = 'T−' + (28 - board.step * 7);
+      $('board-clock').textContent = 'Preparation week ' + board.step;
       $('board-world').textContent = board.world;
       $('rows').innerHTML = board.rows.map(function (p) {
         var s = status[p.status] || status.not_contacted, done = p.checklist.filter(function (i) { return i.state === 'done'; }).length;
-        var blocked = p.modifiers.includes('theatre_blocked');
-        return '<tr data-patient="' + esc(p.patientId) + '" class="board-row row--' + s[1] + '"><td><a href="pathway.html?patient=' + encodeURIComponent(p.patientId) + '"><strong>' + esc(p.name) + '</strong></a><small>' + esc(p.patientId) + (board.featuredPatientIds.includes(p.patientId) ? ' · Featured' : '') + '</small></td><td>' + esc(p.procedureLabel) + '<small>' + esc(p.needs.join(' · ')) + '</small></td><td>' + (blocked ? 'Date being confirmed' : esc(new Date(p.surgeryDate).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))) + '</td><td>' + p.daysToSurgery + '</td><td><div class="checklist-pills">' + p.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '" title="' + esc(i.detail || i.state.replace('_',' ')) + '">' + (i.state === 'done' ? '✓ ' : '') + itemNames[i.id] + '</span>'; }).join('') + '</div></td><td><strong>' + Math.round(p.readiness * 100) + '%</strong><div class="readiness-track"><span style="width:' + done * 20 + '%"></span></div></td><td><span class="tag tag--' + s[1] + '">' + s[0] + '</span></td><td>' + (p.lastContactAt ? esc(new Date(p.lastContactAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})) : '—') + '</td></tr>';
+        return '<tr data-patient="' + esc(p.patientId) + '" class="board-row row--' + s[1] + '"><td><a href="pathway.html?patient=' + encodeURIComponent(p.patientId) + '"><strong>' + esc(p.name) + '</strong></a><small>' + esc(p.patientId) + (board.featuredPatientIds.includes(p.patientId) ? ' · Featured' : '') + '</small></td><td>' + esc(p.procedureLabel) + '<small>' + esc(p.needs.join(' · ')) + '</small></td><td>Date to be confirmed</td><td>' + board.step + '</td><td><div class="checklist-pills">' + p.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '" title="' + esc(i.detail || i.state.replace('_',' ')) + '">' + (i.state === 'done' ? '✓ ' : '') + itemNames[i.id] + '</span>'; }).join('') + '</div></td><td><strong>' + Math.round(p.readiness * 100) + '%</strong><div class="readiness-track"><span style="width:' + done * 20 + '%"></span></div></td><td><span class="tag tag--' + s[1] + '">' + s[0] + '</span></td><td>' + (p.lastContactAt ? esc(new Date(p.lastContactAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})) : '—') + '</td></tr>';
       }).join('') || '<tr><td colspan="8">No eligible patients found in this world.</td></tr>';
     } catch (e) { console.error(e); $('board-clock').textContent = 'Connection unavailable'; }
   }
