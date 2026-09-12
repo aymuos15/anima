@@ -9,7 +9,7 @@ export function preparationClarification(patient: PatientRun, c: Conversation, t
 
   const bloods = `A full blood count checks your blood; U&E checks salts and kidney function.${patient.modifiers.includes('add_hba1c') ? ' HbA1c checks longer-term blood sugar.' : ''}`
   const visit = `The proposed pre-op visit is for blood tests and an ECG heart tracing. ${bloods}`
-  const physio = "These are the exercises your physiotherapist showed you to prepare for your operation. Follow their own plan; the practice can help you contact them if you need guidance."
+  const physio = "Physiotherapy can help you prepare for surgery. A physiotherapist can teach exercises suitable for you; I do not know whether you have already had that teaching."
   const nutrition = patient.modifiers.includes('renal_caution')
     ? 'Only take preparation drinks recommended by your surgical team. Your kidney team or dietitian should check which drinks suit you; follow your personal drinks and fasting instructions.'
     : 'Preparation drinks may contain carbohydrate or protein. Only use the drinks your surgical team recommended, following your personal drinks and fasting instructions.'

@@ -15,6 +15,7 @@ import { conversations, conversation, approval, renderConversation, lintOutbound
 import { retainRefs, staffAction, escalatePatient } from './preop/tools.js'
 import { clearSymptomDenial, supportAgreement } from './preop/answers.js'
 import { preparationClarification } from './preop/clarifications.js'
+import { interpretDialogue } from './preop/physio-dialogue.js'
 import { getAppointmentSessions } from './tools/read.js'
 import { writeTools } from './tools/write.js'
 import { assertAllowed, sendIMessage, pollIMessages } from './imessage.js'
@@ -159,17 +160,54 @@ async function handleDemoReply(patientId: string, text: string) {
     try { await escalatePatient(p, symptom) } finally { const explanation = c.pendingEvent!.patientExplanation; await deliver(patientId, explanation, explanation); c.pendingEvent = undefined }
     return
   }
+  const dialogue = await interpretDialogue(p, c, text)
+  if (dialogue.intent === 'information') {
+    const notTaught = c.stage === 'physio' && /^no\b/i.test(text.trim())
+    if (notTaught) {
+      const physio = p.checklist.find(i => i.id === 'physio')!
+      Object.assign(physio, { state: 'pending', detail: 'Patient reports no physiotherapy teaching', updatedAtStep: getState().step }); savePatient(p)
+      c.stage = 'physio_help'; c.physioHelp = 'contact'; c.lastText = 'Would you like help contacting your physiotherapy team?'
+      dialogue.text = dialogue.text.replace(/[^.!?]*\?\s*$/, '').trim() + ' ' + c.lastText
+    }
+    const stageTopic = c.stage.startsWith('physio') || c.stage === 'barrier' ? 'physio' : c.stage.startsWith('nutrition') ? 'nutrition' : c.stage.startsWith('arrival') ? 'arrival' : c.stage === 'slot' || c.stage === 'blood_followup' || c.stage === 'waiting_results' ? 'bloods' : c.stage === 'ecg_completion' ? 'ecg' : c.stage === 'red_flag' ? 'symptoms' : c.stage
+    c.sideTopic = !notTaught && (dialogue.topic !== stageTopic || dialogue.text.includes('?')) ? dialogue.topic : undefined
+    const pendingPrompt = c.lastText
+    await say(p, dialogue.text, text, true, true)
+    c.lastText = pendingPrompt
+    return
+  }
+  if (c.sideTopic === 'physio' && ['physio', 'physio_progress'].includes(c.stage) && dialogue.report !== 'none' && text.trim().split(/\s+/).length > 2) c.sideTopic = undefined
+  if (c.sideTopic) {
+    if (dialogue.intent === 'continue' || approval(text) === 'no' || /^(?:yes|yes please|1|2|option [12])$/i.test(text.trim())) {
+      c.sideTopic = undefined
+      if (['physio', 'physio_progress', 'physio_help', 'barrier'].includes(c.stage)) {
+        const physio = p.checklist.find(i => i.id === 'physio')!
+        if (physio.state !== 'done') { physio.state = 'pending'; physio.detail = 'Physiotherapy questions left open; no completion confirmed'; savePatient(p) }
+        await offerSlots(p, 'We can leave physiotherapy open and move to the blood-test visit. ')
+      } else {
+        const pendingPrompt = c.lastText
+        await say(p, 'We can return to the preparation question. ' + pendingPrompt, text, false, true)
+        c.lastText = pendingPrompt
+      }
+    } else {
+      const pendingPrompt = c.lastText
+      await say(p, 'We can return to your preparation plan when you are ready. What else would you like to know about ' + c.sideTopic + '?', text, false, true)
+      c.lastText = pendingPrompt
+    }
+    return
+  }
   const clarification = preparationClarification(p, c, text)
   if (clarification) {
     const pendingPrompt = c.lastText
     if (await say(p, clarification, text, false, true)) c.lastText = pendingPrompt
     return
   }
-  if (c.paused) return
+  if (c.paused) { await deliver(patientId, 'Your preparation questions are paused until the next check-in. You can still ask about your preparation.'); return }
   const item = (id: ChecklistItem['id']) => p.checklist.find(i => i.id === id)!
   const settle = (id: ChecklistItem['id'], state: ChecklistItem['state'], detail: string) => { Object.assign(item(id), { state, detail, updatedAtStep: getState().step }); savePatient(p) }
   const answer = approval(text) === 'ambiguous' && supportAgreement(text, c, p) ? 'yes' : approval(text)
-  const reported = /^(?:yes|yeah|yep)\b/i.test(text.trim()) ? 'yes' : /^(?:no|nope|not yet)\b/i.test(text.trim()) ? 'no' : answer
+  const semanticReport = ['physio','physio_progress','ecg_completion','nutrition','nutrition_supply','arrival','blood_followup'].includes(c.stage) ? dialogue.report : 'none'
+  const reported = semanticReport !== 'none' ? semanticReport : /^(?:yes|yeah|yep)\b/i.test(text.trim()) ? 'yes' : /^(?:no|nope|not yet)\b/i.test(text.trim()) ? 'no' : answer
   if (c.stage === 'physio') {
     const taught = reported === 'yes' || (!/\b(no|not|never|haven.t)\b/i.test(text) && /shown|taught|doing (?:the |my )?exercises/i.test(text))
     if (taught) {
@@ -200,7 +238,7 @@ async function handleDemoReply(patientId: string, text: string) {
       if (c.physioHelp === 'leaflet') await deliver(patientId, 'Here is the NHS joint surgery preparation information: ' + PHYSIO_LEAFLET + ' Follow your own physiotherapist’s exercise plan.')
       else await runWrite(p, 'create_task', { title: 'Help contacting physiotherapy before surgery', reason: 'Patient agreed to help contacting physiotherapy about preparation exercises' }, 'physio')
     }
-    await offerSlots(p)
+    await offerSlots(p, answer === 'no' ? 'We can leave physiotherapy open and move to the blood-test visit. ' : '')
     return
   }
   if (c.stage === 'slot') {

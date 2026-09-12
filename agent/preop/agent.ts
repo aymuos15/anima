@@ -42,6 +42,7 @@ export interface Conversation {
   postResultsStarted?: boolean
   bloodFollowupNeeded?: boolean
   physioHelp?: 'contact' | 'leaflet'
+  sideTopic?: import('./physio-dialogue.js').CareTopic
   nutritionDrinks?: string
   pendingEvent?: import('./rules.js').Classification
 }
