@@ -5,10 +5,10 @@ import { readTools } from '../tools/read.js'
 import { preopTools } from './tools.js'
 
 export const protocol = readFileSync(new URL('./skills/elective-preop.md', import.meta.url), 'utf8')
-export const SYSTEM = `You are the pre-operative coordinator for Northbank General, messaging one patient who is booked for elective surgery. Use their real record and active modifiers. NHS plain English, short sentences, no jargon, exclamation marks or emojis. Under 80 words, at most one question per message. First name at the start only.
+export const SYSTEM = `You are the pre-operative coordinator for Northbank General, messaging one patient who is booked for elective surgery. Use their real record and active modifiers. NHS plain English, short sentences, no jargon, exclamation marks or emojis. Aim for at most 35 words; always under 80 words and at most one question per message. First name at the start only.
 Never interpret tests, diagnose, reassure about symptoms, or decide clinical severity. All result and safety-net messages are emitted verbatim by the server from rules.ts; never replace them. An escalated session permits only the server's create_task and no further questions, now or later.
 Never invent dates, slots, results, clinicians or phone numbers. Use real sessions. Propose every write and wait for explicit approval. Ambiguous replies never approve a write. Never retry a conflict.
-Work through physio, bloods, ECG, three anaesthetic questions, transport. Respect needs and goals. The server owns the protocol stage and clinical detector. If wordingOnly is true, do not call ANY tool: write the next patient message using the supplied facts and required final question. You may add one brief nonclinical acknowledgement of their reply. Preserve every logistical commitment and recorded modifier. The current incoming instruction contains the authoritative step and patient response. It does not authorize any clinical inference. Theatre-blocked patients get no promise of a surgery day.`
+Before results: physio teaching and progress, appointment, three anaesthetic questions, transport. After results: blood follow-up, ECG completion only, individual nutrition drinks, arrival, final questions. Respect needs and goals. The server owns the protocol stage and clinical detector. If wordingOnly is true, do not call ANY tool: write the next patient message using the supplied facts and required final question. Preserve the supplied text exactly; you may prefix only "Thank you. " or "Thanks. " when appropriate and within 35 words. Preserve every logistical commitment and recorded modifier. The current incoming instruction contains the authoritative step and patient response. It does not authorize any clinical inference. Theatre-blocked patients get no promise of a surgery day.`
 export const preopAgent = app.agent({
   name: 'preop_agent',
   model: openai(process.env.MODEL ?? 'gpt-5.6-luna', { reasoning: { effort: 'low' } }),
@@ -26,7 +26,7 @@ import { getAppointmentSessions } from '../tools/read.js'
 import type { Session } from '@animahealth/adk'
 export type Slot = Awaited<ReturnType<typeof getAppointmentSessions>>[number]
 export interface Conversation {
-  stage: 'physio' | 'barrier' | 'slot' | 'medicines' | 'allergies' | 'red_flag' | 'transport' | 'finished'
+  stage: 'physio' | 'physio_progress' | 'physio_help' | 'barrier' | 'slot' | 'medicines' | 'allergies' | 'red_flag' | 'transport' | 'waiting_results' | 'blood_followup' | 'ecg_completion' | 'nutrition' | 'nutrition_type' | 'nutrition_supply' | 'nutrition_timing' | 'arrival' | 'arrival_help' | 'questions' | 'finished'
   turns: number
   paused: boolean
   escalated: boolean
@@ -35,11 +35,18 @@ export interface Conversation {
   lastText: string
   supportTask?: boolean
   barrierTask?: string
+  deferredText?: string
+  deferredEvent?: boolean
+  postResultsReady?: boolean
+  postResultsStarted?: boolean
+  bloodFollowupNeeded?: boolean
+  physioHelp?: 'contact' | 'leaflet'
+  nutritionDrinks?: string
   pendingEvent?: import('./rules.js').Classification
 }
 export const conversations = new Map<string, Conversation>()
 export const PICKUP = 'We will pick this up next week. Your pre-op team can help if you need anything before then.'
-export const CLOSING = "Your preparation checklist is complete. Follow the hospital's instructions about eating, drinking and medicines. Bring your medicines list and arrange your journey with the person supporting you."
+export const CLOSING = "Your preparation answers are recorded. Follow your hospital's instructions about eating, drinking and medicines. Your hospital team will confirm the operation arrangements."
 export function conversation(patient: PatientRun): Conversation {
   let c = conversations.get(patient.patientId)
   if (!c) {
@@ -71,15 +78,15 @@ export async function renderConversation(patient: PatientRun, approvedText: stri
   if (process.env.PREOP_MODEL_OFF === '1') return approvedText
   let raw = ''
   try {
-    const out = await runTurn({ sessionId: patient.sessionId, input: { message: `Current record and protocol state: ${JSON.stringify(state)}\nPatient reply: ${JSON.stringify(inbound)}\nWrite the next patient message using these approved facts. Preserve the final question exactly. You may add one short nonclinical acknowledgement of their reply. No tools, new promises or clinical interpretation: ${approvedText}`, state } })
+    const out = await runTurn({ sessionId: patient.sessionId, input: { message: `Current record and protocol state: ${JSON.stringify(state)}\nPatient reply: ${JSON.stringify(inbound)}\nWrite the next patient message using these approved facts. Preserve the final question exactly. Copy the approved text exactly; optionally prefix only "Thank you. " or "Thanks. " if the result is at most 35 words. No tools, new promises or clinical interpretation: ${approvedText}`, state } })
     raw = out.output.text ?? ''
     if (out.error || out.status === 'error' || out.yieldedTools?.length) throw new Error(`Pre-op model turn failed: ${out.error ?? out.status}`)
     patient.sessionId = out.sessionId
     savePatient(patient)
     lintOutbound(raw)
-    const requiredQuestion = approvedText.includes('?') ? approvedText.slice(approvedText.lastIndexOf('.') + 1).trim() : undefined
-    if (requiredQuestion && !raw.endsWith(requiredQuestion)) throw new Error('Model changed the required protocol question')
-    if (!requiredQuestion && raw.includes('?')) throw new Error('Model added an unrequested question')
+    const prefixes = ['', 'Thank you. ', 'Thanks. ']
+    if (!prefixes.some(prefix => raw === prefix + approvedText)) throw new Error('Model changed approved protocol facts')
+    if (raw !== approvedText && raw.trim().split(/\s+/).length > 35) throw new Error('Model acknowledgement exceeded concise turn target')
     return raw
   } catch (error) {
     appendFileSync('/tmp/preop-wording-rejections.jsonl', JSON.stringify({ at: new Date().toISOString(), patientId: patient.patientId, reason: String(error), raw, canonical: approvedText }) + '\n', { mode: 0o600 })

@@ -10,7 +10,7 @@ import { getState, resetState, saveState, savePatient, readiness, type PatientRu
 import { loadCohort, getFeaturedPatientIds, preparePatientRun } from './preop/cohort.js'
 import { seedStallWorld } from './preop/seed.js'
 import { stepTimeline } from './preop/timeline.js'
-import { classify, detectRedFlag } from './preop/rules.js'
+import { classify, detectRedFlag, BLOODS_FOLLOWUP } from './preop/rules.js'
 import { conversations, conversation, approval, renderConversation, lintOutbound, PICKUP, CLOSING, captureConversationSnapshot, restoreConversationSnapshot } from './preop/agent.js'
 import { retainRefs, staffAction, escalatePatient } from './preop/tools.js'
 import { getAppointmentSessions } from './tools/read.js'
@@ -56,11 +56,13 @@ async function deliver(patientId: string, text: string, eventText?: string) {
   conversation(p).lastText = text
   if (p.phone) { const sent = await sendIMessage(p.phone, text); if (!sent) console.warn(`[preop] ${patientId}: send unavailable; transcript/console fallback active`) }
 }
-async function say(patient: PatientRun, text: string, inbound = '') {
+async function say(patient: PatientRun, text: string, inbound = '', event = false) {
+  patient = getState().patients[patient.patientId]
   const c = conversation(patient)
   if (c.paused || c.escalated) return false
-  if (c.turns >= 8) { c.paused = true; await deliver(patient.patientId, PICKUP); return false }
-  await deliver(patient.patientId, await renderConversation(patient, text, inbound))
+  if (c.turns >= 8) { c.paused = true; c.deferredText = text; c.deferredEvent = event; await deliver(patient.patientId, PICKUP); return false }
+  if (event) await deliver(patient.patientId, text, text)
+  else await deliver(patient.patientId, await renderConversation(patient, text, inbound))
   c.turns++
   return true
 }
@@ -76,8 +78,8 @@ async function offerSlots(patient: PatientRun, intro = '') {
   const c = conversation(patient)
   c.stage = 'slot'; c.slots = await getAppointmentSessions(patient.modifiers.includes('slots_late'))
   if (c.slots.length < 2) { await say(patient, 'The practice needs to confirm two suitable appointments. Please contact the practice for help arranging your visit.'); return }
-  const extra = patient.modifiers.includes('add_hba1c') ? ' HbA1c also checks your longer-term blood sugar.' : ''
-  await say(patient, `${intro}We need a blood count, kidney and salt tests before your anaesthetic.${extra} I will book bloods and a heart tracing together and order the tests. Which works: 1, ${c.slots[0].startsAtText}, or 2, ${c.slots[1].startsAtText}?`)
+  const extra = patient.modifiers.includes('add_hba1c') ? ', plus HbA1c for blood sugar' : ''
+  await say(patient, `${intro}I can book bloods and ECG, ordering blood count and kidney/salt tests${extra}. Which visit suits you: 1, ${c.slots[0].startsAtText}, or 2, ${c.slots[1].startsAtText}?`)
 }
 async function demoStart(patientId: string, phone?: string) {
   if (stepping) throw new Error('The timeline is changing; please start again when it finishes')
@@ -88,11 +90,42 @@ async function demoStart(patientId: string, phone?: string) {
   if (phone) p.phone = phone
   savePatient(p); conversations.delete(patientId)
   const prefix = p.modifiers.includes('theatre_blocked') ? 'The hospital is confirming your operation date. ' : ''
-  const transport = p.modifiers.includes('transport_flag') ? 'I can ask the practice to help with your recorded transport need. ' : ''
-  await say(p, `Hello ${p.name.split(' ')[0]}, I am coordinating your preparation for ${p.procedureLabel}. ${prefix}${transport}Have you started your preparation exercises?`)
+  await say(p, `Hello ${p.name.split(' ')[0]}, I am coordinating your surgery preparation. ${prefix}Has someone shown you the physiotherapy exercises to do before your operation?`)
   const current = getState().patients[patientId]
   const coded = await sim.action('gp', { type: 'save_problem', patientId, title: 'Pre-operative assessment in progress', problemStatus: 'active' })
   retainRefs(current, 'physio', coded); savePatient(current)
+}
+const PHYSIO_LEAFLET = 'https://www.medway.nhs.uk/patients-and-visitors/having-surgery/hip-or-knee/'
+async function askECG(p: PatientRun) {
+  const c = conversation(p)
+  c.stage = 'ecg_completion'
+  const text = classify('ecg_normal', p).patientExplanation
+  await say(p, text, '', true)
+}
+async function beginResults(p: PatientRun) {
+  const c = conversation(p)
+  if (!c.postResultsReady || c.postResultsStarted || c.escalated) return false
+  c.postResultsStarted = true
+  const blood = [...p.results].reverse().find(r => r.itemId === 'bloods')
+  if (blood?.outcome === 'bloods_normal') await deliver(p.patientId, blood.classification.patientExplanation, blood.classification.patientExplanation)
+  if (c.bloodFollowupNeeded) {
+    c.stage = 'blood_followup'
+    const text = classify('bloods_low_hb', p).patientExplanation
+    await say(p, text, '', true)
+  } else await askECG(p)
+  return true
+}
+async function askNutrition(p: PatientRun, intro = '') {
+  conversation(p).stage = 'nutrition'
+  await say(p, intro + 'Has your surgical team given you any drinks to take before your operation?')
+}
+async function askArrival(p: PatientRun, intro = '') {
+  conversation(p).stage = 'arrival'
+  await say(p, intro + 'Do you know where to go when you arrive at the hospital?')
+}
+async function askFinal(p: PatientRun, intro = '') {
+  conversation(p).stage = 'questions'
+  await say(p, intro + "Is there anything else you'd like to ask about preparing for your operation?")
 }
 const replying = new Set<string>()
 let stepping = false
@@ -119,22 +152,42 @@ async function handleDemoReply(patientId: string, text: string) {
     return
   }
   if (c.paused) return
-  if (c.turns >= 8) { c.paused = true; c.pendingQuestion = undefined; await deliver(patientId, PICKUP); return }
   const item = (id: ChecklistItem['id']) => p.checklist.find(i => i.id === id)!
   const settle = (id: ChecklistItem['id'], state: ChecklistItem['state'], detail: string) => { Object.assign(item(id), { state, detail, updatedAtStep: getState().step }); savePatient(p) }
   const answer = approval(text)
+  const reported = /^(?:yes|yeah|yep)\b/i.test(text.trim()) ? 'yes' : /^(?:no|nope|not yet)\b/i.test(text.trim()) ? 'no' : answer
   if (c.stage === 'physio') {
-    if (answer === 'yes' || (!/\b(no|not|never|haven.t)\b/i.test(text) && /started|doing (?:the |my )?exercises/i.test(text))) { settle('physio', 'done', 'Patient has started preparation exercises'); await offerSlots(p); return }
-    settle('physio', 'pending', 'Exercises not yet confirmed'); c.stage = 'barrier'
-    const explanation = classify('physio_not_started', p).patientExplanation; await deliver(patientId, explanation, explanation); return
+    const taught = reported === 'yes' || (!/\b(no|not|never|haven.t)\b/i.test(text) && /shown|taught|doing (?:the |my )?exercises/i.test(text))
+    if (taught) {
+      settle('physio', 'pending', 'Patient confirms physiotherapy teaching; exercise progress still to check')
+      c.stage = 'physio_progress'
+      await say(p, 'How are you getting on with the exercises you were shown?', text)
+    } else if (reported === 'no' || /not|never|haven.t/i.test(text)) {
+      settle('physio', 'pending', 'Patient has not had physiotherapy teaching')
+      c.stage = 'physio_help'; c.physioHelp = 'contact'
+      await say(p, classify('physio_not_started', p).patientExplanation, text)
+    } else await say(p, 'Has someone shown you the physiotherapy exercises to do before your operation?', text)
+    return
   }
-  if (c.stage === 'barrier') {
-    if (c.barrierTask) {
-      if (answer === 'ambiguous') { await say(p, 'Shall I ask the practice to help with that preparation barrier?', text); return }
-      if (answer === 'yes') await runWrite(p, 'create_task', { title: 'Help with preparation exercise barrier', reason: c.barrierTask }, 'physio')
-      c.barrierTask = undefined
-    } else if (/transport|travel|carer|interpreter/i.test(text)) { c.barrierTask = text; await say(p, 'The practice can help with that preparation barrier. Shall I ask them to contact you?', text); return }
-    await offerSlots(p, 'The practice can help with your preparation. '); return
+  if (c.stage === 'physio_progress') {
+    if (reported === 'no' || /pain|difficult|struggl|cannot|can.t|not started|not (?:going|doing|managing)|not well|not really|haven.t|unsure|help|detail|forgot|leaflet|instructions/i.test(text)) {
+      settle('physio', 'pending', 'Patient needs help with prescribed exercises: ' + text)
+      c.stage = 'physio_help'; c.physioHelp = /pain|difficult|struggl|cannot|can.t/i.test(text) ? 'contact' : 'leaflet'
+      await say(p, c.physioHelp === 'contact' ? 'Your physiotherapy team can check the exercises with you. Would you like help contacting them?' : 'Would you like the NHS joint surgery preparation leaflet to go over alongside your physiotherapist’s advice?', text)
+    } else if (reported === 'yes' || /well|fine|good|daily|every day|regular|doing|started|okay|ok/i.test(text)) {
+      settle('physio', 'done', 'Patient confirms physiotherapy teaching and exercise progress: ' + text)
+      await offerSlots(p)
+    } else await say(p, 'Are you managing the exercises you were shown?', text)
+    return
+  }
+  if (c.stage === 'physio_help' || c.stage === 'barrier') {
+    if (answer === 'ambiguous') { await say(p, c.lastText, text); return }
+    if (answer === 'yes') {
+      if (c.physioHelp === 'leaflet') await deliver(patientId, 'Here is the NHS joint surgery preparation information: ' + PHYSIO_LEAFLET + ' Follow your own physiotherapist’s exercise plan.')
+      else await runWrite(p, 'create_task', { title: 'Help contacting physiotherapy before surgery', reason: 'Patient agreed to help contacting physiotherapy about preparation exercises' }, 'physio')
+    }
+    await offerSlots(p)
+    return
   }
   if (c.stage === 'slot') {
     const normalized = text.trim().toLowerCase().replace(/[.!]$/, '')
@@ -168,11 +221,82 @@ async function handleDemoReply(patientId: string, text: string) {
       if (c.supportTask || p.modifiers.includes('transport_flag')) await runWrite(p, 'create_task', { title: 'Arrange transport home after surgery', reason: 'Patient agreed to practice transport help' }, 'transport')
       if (p.modifiers.includes('carer_flag')) await runWrite(p, 'create_task', { title: 'Include carer in pre-operative support plan', reason: 'Patient agreed to carer involvement' }, 'transport')
       if (p.modifiers.includes('interpreter_flag')) await runWrite(p, 'create_task', { title: 'Book interpreter for pre-op visit', reason: 'Patient agreed to interpreter support' }, 'transport')
-      settle('transport', 'done', 'Journey and first-night support confirmed or practice help agreed'); c.stage = 'finished'
-      await say(p, 'Thank you. Your preparation answers are recorded. We will contact you when your blood tests and heart tracing results are back.', text)
+      settle('transport', 'done', 'Journey and first-night support confirmed or practice help agreed'); c.stage = 'waiting_results'
+      if (!await beginResults(p)) await say(p, 'Thank you. Your preparation answers are recorded. We will check in again after your tests.', text)
     } else if (!c.supportTask && !p.modifiers.some(m => ['transport_flag', 'carer_flag', 'interpreter_flag'].includes(m))) { c.supportTask = true; await say(p, 'The practice can help arrange transport and support. Shall I ask them to contact you?', text) }
-    else { c.stage = 'finished'; await say(p, 'I will leave that support request unarranged. Please contact the practice when you would like help.', text) }
+    else { c.stage = 'waiting_results'; if (!await beginResults(p)) await say(p, 'Please contact the practice when you would like help with transport or support.', text) }
+    return
   }
+  if (c.stage === 'blood_followup') {
+    if (reported === 'ambiguous' && !/\b(spoken|discussed|called|talked|nobody|no one)\b/i.test(text)) { const question = classify('bloods_low_hb', p).patientExplanation; await say(p, question, '', true); return }
+    if (reported === 'no' || /not|haven.t|no one|nobody/i.test(text)) await deliver(patientId, BLOODS_FOLLOWUP, BLOODS_FOLLOWUP)
+    c.bloodFollowupNeeded = false
+    await askECG(p); return
+  }
+  if (c.stage === 'ecg_completion') {
+    if (reported === 'yes' || (!/not|haven.t|no/i.test(text) && /had|done|completed/i.test(text))) {
+      settle('ecg', p.results.some(r => r.outcome === 'ecg_new_af') ? 'review' : 'done', 'Patient confirms ECG completed; any flagged tracing still awaits clinician review')
+      await askNutrition(p)
+    } else if (reported === 'no' || /not|haven.t/i.test(text)) {
+      settle('ecg', p.results.some(r => r.outcome === 'ecg_new_af') ? 'review' : 'pending', 'ECG completion not confirmed by patient; any flagged tracing still awaits clinician review')
+      await askNutrition(p, 'Please contact your pre-assessment team to arrange your ECG. ')
+    } else { const question = classify('ecg_normal', p).patientExplanation; await say(p, question, '', true) }
+    return
+  }
+  if (c.stage === 'nutrition' || c.stage === 'nutrition_type') {
+    if (/\?|do I need|should I/i.test(text)) { await say(p, 'Your surgical team should confirm any recommended drinks for you. Have they given you a personal drinks plan?', text); return }
+    if (reported === 'no' || /none|not recommended|not given/i.test(text)) { await askArrival(p); return }
+    if (c.stage === 'nutrition_type' || reported === 'yes' || /protein|shake|drink|preop|carb/i.test(text)) {
+      c.nutritionDrinks = text
+      if (/preop|carb/i.test(text) && /protein/i.test(text) && c.stage !== 'nutrition_type') {
+        c.stage = 'nutrition_type'
+        await say(p, 'Some pre-operation drinks contain carbohydrate rather than protein. What is the name on yours?', text); return
+      }
+      c.stage = 'nutrition_supply'
+      await say(p, /protein/i.test(text) ? 'Have you received the protein shakes your surgical team recommended?' : 'Do you have the drinks your surgical team recommended?', text)
+    } else await say(p, 'Has your surgical team recommended any drinks before your operation?', text)
+    return
+  }
+  if (c.stage === 'nutrition_supply') {
+    if (reported === 'no' || /not|haven.t|missing/i.test(text)) { await askArrival(p, 'Please contact your pre-assessment team to obtain the recommended drinks. '); return }
+    if (reported === 'ambiguous' && !/have|received|got/i.test(text)) { await say(p, c.lastText, text); return }
+    c.stage = 'nutrition_timing'
+    const diabetes = p.modifiers.includes('add_hba1c'), renal = p.modifiers.includes('renal_caution')
+    const intro = renal && diabetes ? 'With diabetes and kidney disease, your teams need to confirm which drinks suit you and your fasting plan. ' : renal ? 'With kidney disease, your kidney team or dietitian should check which drinks suit you. ' : diabetes ? 'With diabetes, your team needs to confirm your drinks and fasting plan. ' : ''
+    await say(p, intro + 'What instructions were you given for taking them?', text)
+    return
+  }
+  if (c.stage === 'nutrition_timing') {
+    const unclear = /don.t know|unsure|no|not|when|how|\?/i.test(text)
+    const intro = /preop|carb/i.test(c.nutritionDrinks ?? '') && /protein/i.test(c.nutritionDrinks ?? '') ? 'Pre-op carbohydrate drinks are not protein shakes; check the label with your team. ' : unclear ? 'Please check the drink timing and your personal fasting instructions with your pre-assessment team. ' : 'Follow your own team’s drink and fasting instructions. '
+    await askArrival(p, intro); return
+  }
+  if (c.stage === 'arrival') {
+    if (reported === 'yes' || /letter|know|entrance|ward/i.test(text) && !/don.t|not|unsure/i.test(text)) { await askFinal(p); return }
+    if (reported === 'no' || /don.t|not|unsure|where/i.test(text)) { c.stage = 'arrival_help'; await say(p, 'Your admission letter should give your arrival details. Would you like help checking them?', text); return }
+    await say(p, 'Do you know where to go when you arrive at the hospital?', text); return
+  }
+  if (c.stage === 'arrival_help') {
+    if (answer === 'ambiguous') { await say(p, c.lastText, text); return }
+    if (answer === 'yes') await runWrite(p, 'create_task', { title: 'Confirm hospital arrival details', reason: 'Patient agreed to help checking the admission location and arrival instructions' }, 'transport')
+    await askFinal(p, answer === 'yes' ? 'I have asked the team to help check your arrival details. ' : '')
+    return
+  }
+  if (c.stage === 'questions') {
+    if (answer === 'no' || /nothing|that.s all|all clear/i.test(text)) { c.stage = 'finished'; await say(p, CLOSING, text); return }
+    if (/link|leaflet|NHS/i.test(text) && /drink|protein|shake|carb/i.test(text)) {
+      await say(p, 'This NHS leaflet explains carbohydrate pre-op drinks: https://www.royalfree.nhs.uk/patients-and-visitors/patient-information-leaflets/drinking-preop-r-surgery Follow your own team’s drink and fasting instructions.', text)
+    } else if (/fast|eat|drink|nutrition|protein|shake|carb/i.test(text)) {
+      await say(p, 'Follow your hospital’s personal instructions for drinks and fasting. Please contact pre-assessment if these are missing or unclear.', text)
+    } else if (/physio|exercise|leaflet/i.test(text)) {
+      await say(p, 'Follow your physiotherapist’s own exercise plan. The NHS joint surgery preparation information is here: ' + PHYSIO_LEAFLET, text)
+    } else if (/ECG|tracing|blood|result/i.test(text)) {
+      await say(p, 'Your clinical team needs to discuss what your results mean for you. Please contact your pre-assessment team about this.', text)
+    } else await say(p, 'Your pre-assessment team can help with that question. Please contact them to check the advice for your operation.', text)
+    return
+  }
+  if (c.stage === 'waiting_results') await beginResults(p)
+
 }
 
 createServer(async (req, res) => {
@@ -208,13 +332,29 @@ createServer(async (req, res) => {
               const patient = getState().patients[patientId]
               if (!patient.transcript.length || conversation(patient).escalated) continue
               const item = [...patient.results].reverse().find(r => r.outcome === classification.code)!.itemId
-              conversation(patient).pendingEvent = classification
-              await staffAction(patient, classification, item)
-              if (classification.code === 'bloods_low_hb') await runWrite(patient, 'order_test', { panelId: 'fbc', clinicalDetails: 'Repeat FBC with ferritin and iron studies; GP review', priority: 'routine', collection: 'next-round' }, 'bloods')
-              await deliver(patientId, classification.patientExplanation, classification.patientExplanation)
-              conversation(patient).pendingEvent = undefined
+              const c = conversation(patient)
+              c.pendingEvent = classification
+              try {
+                if (classification.severity === 'urgent') {
+                  c.escalated = true; c.pendingQuestion = undefined; c.deferredText = undefined
+                  try { await staffAction(patient, classification, item) } finally { await deliver(patientId, classification.patientExplanation, classification.patientExplanation) }
+                } else if (item === 'bloods' || item === 'ecg') {
+                  await staffAction(patient, classification, item)
+                  c.postResultsReady = true
+                  if (classification.code === 'bloods_low_hb') c.bloodFollowupNeeded = true
+                }
+              } finally { c.pendingEvent = undefined }
+
             }
-            if (state.step === 4) for (const p of Object.values(getState().patients)) if (p.status === 'done') await deliver(p.patientId, CLOSING)
+            for (const [patientId, c] of conversations) {
+              if (c.deferredText && !c.escalated) {
+                const deferred = c.deferredText, event = c.deferredEvent; c.deferredText = undefined; c.deferredEvent = undefined
+                await say(getState().patients[patientId], deferred, '', event)
+                if (c.stage === 'red_flag') c.pendingQuestion = 'anaesthetic_red_flag'
+              }
+            }
+            for (const p of Object.values(getState().patients)) if (conversation(p).stage === 'waiting_results') await beginResults(p)
+            if (state.step === 4) for (const p of Object.values(getState().patients)) if (p.status === 'done' && conversation(p).stage === 'finished' && conversation(p).lastText !== CLOSING) await deliver(p.patientId, CLOSING)
           }
           } finally { stepping = false }
         } else { json(res, 404, { error: 'Unknown demo route' }); return }

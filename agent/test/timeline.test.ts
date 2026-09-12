@@ -20,7 +20,7 @@ test('forward rolls due items only, snapshots deeply, advances once; rewind rest
   assert.equal(first.state.step, 1)
   assert.equal(first.state.snapshots.length, 1)
   assert.deepEqual(first.state.snapshots[0].patients, initial.patients)
-  assert.deepEqual(first.events.map(e => e.classification.code), ['physio_not_started', 'bloods_normal'])
+  assert.deepEqual(first.events.map(e => e.classification.code), ['bloods_normal'])
   assert.equal(first.state.patients.fixture.checklist[2].state, 'booked')
   assert.deepEqual(calls, [10080])
   const rewound = await stepTimeline(-1, {}, advance)
@@ -28,7 +28,7 @@ test('forward rolls due items only, snapshots deeply, advances once; rewind rest
   assert.deepEqual(rewound.events, [])
   assert.deepEqual(calls, [10080])
   const branch = await stepTimeline(1, { bloods: 'bloods_high_k', physio: 'physio_done' }, advance)
-  assert.deepEqual(branch.events.map(e => e.classification.code), ['physio_done', 'bloods_high_k'])
+  assert.deepEqual(branch.events.map(e => e.classification.code), ['bloods_high_k'])
   assert.equal(branch.state.patients.fixture.status, 'clinical_review')
   const second = await stepTimeline(1, { ecg: 'ecg_new_af' }, advance)
   assert.deepEqual(second.events.map(e => e.classification.code), ['ecg_new_af'])
@@ -58,7 +58,7 @@ test('weighted rolls cover specified intervals and invalid picks never become an
     random = value
     resetState('test-world', [patient()])
     const result = await stepTimeline(1, {}, async () => {})
-    assert.deepEqual(result.events.map(e => e.classification.code), [physio, bloods])
+    assert.deepEqual(result.events.map(e => e.classification.code), [bloods])
   }
   resetState('test-world', [patient()])
   await assert.rejects(stepTimeline(1, { bloods: 'ecg_normal' }, async () => {}), /outcome/i)
@@ -73,4 +73,14 @@ test('clock failure leaves state unchanged and uncontacted cohort members are no
   const advanced = await stepTimeline(1, { physio: 'physio_done', bloods: 'bloods_normal' }, async () => {})
   assert.ok(advanced.events.every(event => event.patientId === 'fixture'))
   assert.deepEqual(advanced.state.patients.untouched, untouched)
+})
+
+test('timeline cannot invent physiotherapy progress or patient-confirmed ECG completion', async t => {
+  t.mock.method(fs, 'writeFileSync', () => {})
+  const p = patient(); p.checklist[2].dueStep = 1
+  resetState('test-world', [p])
+  const result = await stepTimeline(1, { physio: 'physio_done', ecg: 'ecg_normal', bloods: 'bloods_normal' }, async () => {})
+  assert.equal(result.state.patients.fixture.checklist[0].state, 'pending')
+  assert.equal(result.state.patients.fixture.checklist[2].state, 'pending')
+  assert.ok(!result.events.some(e => e.classification.code === 'physio_done'))
 })

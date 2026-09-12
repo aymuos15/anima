@@ -57,23 +57,28 @@ try {
   const modified = board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId && p.modifiers.includes('add_hba1c')) ?? board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId)
   assert.ok(plain && modified, 'two unstarted patients required')
   const reply = (patientId: string, text: string) => api('/api/demo/reply', { patientId, text })
-  await api('/api/demo/start', { patientId: plain.patientId }); let state = await reply(plain.patientId, 'yes')
+  await api('/api/demo/start', { patientId: plain.patientId }); let state = await reply(plain.patientId, 'yes'); assert.match(state.patients[plain.patientId].transcript.at(-1).text, /How are you getting on/); state = await reply(plain.patientId, 'Going well every day')
   const bloods = (s: any) => s.patients[plain.patientId].checklist.find((i: any) => i.id === 'bloods')
   const count = bloods(state).simRefs.length; state = await reply(plain.patientId, 'perhaps'); assert.equal(bloods(state).simRefs.length, count)
   for (const text of ['1', 'I take paracetamol', 'No allergies or previous problems', 'no', 'yes']) state = await reply(plain.patientId, text)
   const run = state.patients[plain.patientId]; assert.equal(run.checklist.filter((i: any) => i.state === 'done').length, 3); assert.ok(bloods(state).simRefs.some((r: any) => r.kind === 'appointment'))
   const beforeStep = run.transcript.length
-  state = await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal', physio: 'physio_done' } }); assert.equal(state.patients[plain.patientId].status, 'ready')
+  state = await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal', physio: 'physio_done' } }); assert.equal(state.patients[plain.patientId].checklist.find((i: any) => i.id === 'ecg').state, 'pending')
   const eventTexts = state.patients[plain.patientId].transcript.slice(beforeStep).filter((x: any) => x.from === 'agent').map((x: any) => x.text)
-  assert.deepEqual(eventTexts, [classify('bloods_normal', run).patientExplanation, classify('ecg_normal', run).patientExplanation])
-  await api('/api/demo/start', { patientId: modified.patientId }); for (const text of ['yes', '2', 'No medicines', 'No allergies']) await reply(modified.patientId, text)
+  assert.deepEqual(eventTexts.slice(-2), [classify('bloods_normal', run).patientExplanation, classify('ecg_normal', run).patientExplanation])
+  state = await reply(plain.patientId, 'yes'); assert.equal(state.patients[plain.patientId].status, 'ready'); assert.match(state.patients[plain.patientId].transcript.at(-1).text, /drinks/)
+  for (const text of ['no', 'yes', 'no']) state = await reply(plain.patientId, text)
+  assert.equal(conversation(state.patients[plain.patientId]).stage, 'finished')
+  await api('/api/demo/start', { patientId: modified.patientId }); for (const text of ['yes', 'Going well', '2', 'No medicines', 'No allergies']) await reply(modified.patientId, text)
   let historyBefore: unknown
   if (mock) {
     const { app } = await import('../app.js')
     const pending = await app.sessions.get((await api('/api/demo/state')).patients[modified.patientId].sessionId)
     pending!.input.message('BEFORE_REWIND_BOUNDARY'); await app.sessions.commit(pending!)
     historyBefore = JSON.stringify((await app.sessions.get(pending!.id))!.events)
-    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal' } })
+    const countBefore = (await api('/api/demo/state')).patients[modified.patientId].transcript.length
+    const stepped = await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal' } })
+    assert.equal(stepped.patients[modified.patientId].transcript.length, countBefore, 'results never stack another question over an unanswered anaesthetic question')
     const future = await app.sessions.get(pending!.id)
     future!.input.message('FUTURE_HISTORY_MUST_DISAPPEAR'); future!.state.update({ daysToSurgery: 0 }); await app.sessions.commit(future!)
   }
@@ -103,6 +108,69 @@ try {
   const finalBoard = await api('/api/board'); assert.equal(finalBoard.notReadyCount, finalBoard.cohortCount - finalBoard.rows.filter((p: any) => p.readiness === 1).length)
   if (mock) { const clockWrites = writes.filter(w => w.type === 'clock').length; await api('/api/demo/step', { direction: -1 }); assert.equal(writes.filter(w => w.type === 'clock').length, clockWrites); const reset = await api('/api/demo/reset', {}); assert.notEqual(reset.world, 'harness'); assert.equal(Object.keys(reset.patients).length, 2) }
   if (mock) {
+    const { getState, resetState } = await import('../preop/store.js')
+    const { loadCohort } = await import('../preop/cohort.js')
+    const { conversations } = await import('../preop/agent.js')
+    const { BLOODS_FOLLOWUP } = await import('../preop/rules.js')
+    const last = (id: string) => getState().patients[id].transcript.filter(m => m.from === 'agent').at(-1)!.text
+    const fresh = async (id: string) => { resetState('harness', await loadCohort()); conversations.clear(); await api('/api/demo/start', { patientId: id }) }
+    const prepared = async (id: string) => { await fresh(id); for (const t of ['yes', 'Going well', '1', 'Paracetamol', 'No allergies', 'no', 'yes']) await reply(id, t) }
+    await fresh(plain.patientId); await reply(plain.patientId, 'no')
+    assert.match(last(plain.patientId), /help contacting your physiotherapy/)
+    let before = writes.length; await reply(plain.patientId, 'perhaps'); assert.equal(writes.length, before)
+    await reply(plain.patientId, 'yes'); assert.equal(writes.slice(before).filter(w => w.type === 'create_task').length, 1)
+    assert.equal(getState().patients[plain.patientId].checklist.find(i => i.id === 'physio')!.state, 'pending')
+    await fresh(plain.patientId); await reply(plain.patientId, 'yes'); await reply(plain.patientId, 'I need the leaflet')
+    before = writes.length; await reply(plain.patientId, 'yes'); assert.equal(writes.length, before)
+    assert.ok(getState().patients[plain.patientId].transcript.some(m => m.text.includes('https://www.medway.nhs.uk/')))
+    await prepared(plain.patientId)
+    before = writes.length
+    state = await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_low_hb', ecg: 'ecg_new_af' } })
+    assert.equal(last(plain.patientId), 'Has anyone spoken to you about your blood results yet?')
+    assert.ok(!getState().patients[plain.patientId].transcript.some(m => m.text === BLOODS_FOLLOWUP))
+    assert.equal(writes.slice(before).filter(w => w.type === 'order_test').length, 0, 'routine abnormal results never auto-order tests')
+    state = await reply(plain.patientId, 'no')
+    assert.deepEqual(state.patients[plain.patientId].transcript.slice(-2).map((m: any) => m.text), [BLOODS_FOLLOWUP, 'Have you had your ECG?'])
+    state = await reply(plain.patientId, 'yes'); assert.equal(state.patients[plain.patientId].checklist.find((i: any) => i.id === 'ecg').state, 'review', 'completion cannot clear flagged tracing')
+    assert.ok(!state.patients[plain.patientId].transcript.some((m: any) => /irregular rhythm|tracing is normal/i.test(m.text)))
+    for (const t of ['protein shakes recommended', 'yes', 'I do not know when', 'no', 'yes', 'no']) state = await reply(plain.patientId, t)
+    assert.ok(state.patients[plain.patientId].transcript.some((m: any) => /personal fasting instructions/.test(m.text)))
+    assert.ok(writes.some(w => w.type === 'create_task' && w.title === 'Confirm hospital arrival details'))
+    await prepared(plain.patientId)
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_low_hb', ecg: 'ecg_normal' } })
+    await reply(plain.patientId, 'yes')
+    assert.ok(!getState().patients[plain.patientId].transcript.some(m => m.text === BLOODS_FOLLOWUP), 'prior contact skips the conditional 24h copy')
+    await prepared(plain.patientId)
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_new_af' } })
+    await reply(plain.patientId, 'no')
+    assert.equal(getState().patients[plain.patientId].checklist.find(i => i.id === 'ecg')!.state, 'review', 'denying completion cannot clear flagged ECG review')
+    await reply(plain.patientId, 'Do I need protein shakes?')
+    assert.match(last(plain.patientId), /Have they given you a personal drinks plan/)
+    assert.doesNotMatch(last(plain.patientId), /received the protein shakes/)
+    await prepared(modified.patientId)
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal' } })
+    for (const t of ['yes', 'protein shakes recommended', 'yes']) await reply(modified.patientId, t)
+    assert.match(last(modified.patientId), /diabetes and kidney disease/)
+    assert.match(last(modified.patientId), /fasting plan/)
+    await prepared(plain.patientId)
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_normal', ecg: 'ecg_normal' } })
+    await reply(plain.patientId, 'yes'); await reply(plain.patientId, 'preop protein drinks')
+    assert.match(last(plain.patientId), /carbohydrate rather than protein/)
+    assert.match(last(plain.patientId), /name on yours/)
+    await reply(plain.patientId, 'preOp'); await reply(plain.patientId, 'yes'); await reply(plain.patientId, 'I do not know')
+    assert.match(last(plain.patientId), /personal fasting instructions/)
+    await prepared(plain.patientId)
+    before = writes.length
+    await api('/api/demo/step', { direction: 1, outcomes: { bloods: 'bloods_high_k', ecg: 'ecg_new_af' } })
+    assert.ok(conversation(getState().patients[plain.patientId]).escalated)
+    assert.equal(last(plain.patientId), classify('bloods_high_k', getState().patients[plain.patientId]).patientExplanation)
+    const after = writes.length, messages = getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length
+    await reply(plain.patientId, 'yes'); await api('/api/demo/step', { direction: 1 })
+    assert.equal(writes.filter(w => w.type !== 'clock').length, writes.slice(0, after).filter(w => w.type !== 'clock').length)
+    assert.equal(getState().patients[plain.patientId].transcript.filter(m => m.from === 'agent').length, messages)
+    resetState('harness', await loadCohort()); conversations.clear()
+  }
+  if (mock) {
     const { app } = await import('../app.js')
     const { renderConversation } = await import('../preop/agent.js')
     const { getState } = await import('../preop/store.js')
@@ -110,6 +178,7 @@ try {
     const examples = [
       ['Paracetamol', 'Do you have any allergies or have you had problems with a previous anaesthetic?', 'Thanks. Any allergies or problems with an anaesthetic?'],
       ['perhaps', 'Shall I ask the practice to help with that preparation barrier?', 'Would you like the practice to call you?'],
+      ['yes', 'Has your surgical team given you any drinks to take before your operation?', 'Your ECG is normal. Has your surgical team given you any drinks to take before your operation?'],
     ]
     process.env.PREOP_MODEL_OFF = '0'
     try {

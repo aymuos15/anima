@@ -29,8 +29,10 @@ export async function stepTimeline(direction: 1 | -1, outcomes: OutcomePicks = {
   for (const patient of Object.values(state.patients)) {
     if (patient.status === 'not_contacted' && !patient.sessionId && !patient.transcript.length) continue
     for (const item of patient.checklist) {
+      // Exercise teaching/progress is patient-reported, never advanced by a synthetic result roll.
+      if (item.id === 'physio') continue
       const choices = outcomesByItem[item.id]
-      const due = item.id === 'physio' ? item.state !== 'done' : item.dueStep === state.step
+      const due = item.dueStep === state.step
       if (!choices || !due || item.state === 'done' || item.state === 'review') continue
       let code = outcomes[item.id]
       if (!code || code === 'random') {
