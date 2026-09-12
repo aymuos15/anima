@@ -1,1 +1,7 @@
 key.txt
+
+# Local simulation/admin UI and generated cohort data
+sim.html
+admin.html
+agent/tools/admin.ts
+agent/data/

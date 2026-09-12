@@ -1,4 +1,7 @@
 import { z } from 'zod'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import type { app as App } from '../app.js'
 import { sim, SITES } from '../sim.js'
 import { buildPathway, fmtDate } from '../pathway.js'
@@ -29,6 +32,7 @@ export function readTools(app: typeof App) {
         stagesReached: p.stagesReached,
         blockers: p.blockers,
         capacity: p.capacity,
+        medicines: p.medicines,
         recentEvents: p.events.slice(-25).map((e) => ({ id: e.id, when: fmtDate(e.createdAt), site: e.site, kind: e.kind, status: e.status, title: e.title, priority: e.priority, version: e.version, data: e.data })),
         errors: p.errors,
       }
@@ -69,5 +73,26 @@ export function readTools(app: typeof App) {
     },
   })
 
-  return [search_patients, get_patient_pathway, get_capacity, get_appointment_sessions, get_resource]
+  const get_similar_pathways = app.tool({
+    name: 'get_similar_pathways',
+    description: 'Statistics from a cohort of other patients in this world with the same condition: how many are at each stage, typical days between stages, typical waiting time, common blockers and needs. Use it when the patient asks what is typical, how long things usually take, or what happens to people like them. Always say the figures come from other patients in this (synthetic) service, not a promise about them.',
+    schema: z.object({ condition: z.string().describe('Condition name, e.g. Arthritis') }),
+    execute: async (ctx) => {
+      const c = loadCohort()
+      const key = Object.keys(c.byCondition).find((k) => k.toLowerCase() === ctx.args.condition.toLowerCase())
+      const group = key ? c.byCondition[key] : null
+      if (!group) return { available: Object.keys(c.byCondition).filter((k) => k !== 'all'), note: `No cohort for ${ctx.args.condition}; overall figures follow`, overall: c.byCondition.all }
+      const examples = c.patients.filter((p: any) => p.conditions.includes(key)).filter((p: any) => Object.keys(p.transitionsDays).length).slice(0, 5)
+        .map((p: any) => ({ currentStage: p.currentStage, transitionsDays: p.transitionsDays, waitingDays: p.waitingDays, blockers: p.blockers.slice(0, 2) }))
+      return { condition: key, builtAt: c.builtAt, cohort: group, examples }
+    },
+  })
+
+  return [search_patients, get_patient_pathway, get_capacity, get_appointment_sessions, get_resource, get_similar_pathways]
+}
+
+let cohortCache: any
+function loadCohort() {
+  if (!cohortCache) cohortCache = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'cohort.json'), 'utf8'))
+  return cohortCache
 }

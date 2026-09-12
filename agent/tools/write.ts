@@ -99,7 +99,76 @@ export function writeTools(app: typeof App) {
       : declined(ctx.input?.note)),
   })
 
-  return [ask_patient, create_task, send_message, book_appointment, schedule_visit, progress_referral, share_record]
+  const prescription_action = app.tool({
+    name: 'prescription_action',
+    description: 'Propose moving a prescription through the pharmacy: link_stock (attach a pharmacy product and quantity so it can be dispensed), review, accept, dispense (deducts stock) or collect. Use the prescription id and its current version from get_patient_pathway medicines. Requires patient approval.',
+    schema: z.object({
+      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(),
+      command: z.enum(['link_stock', 'review', 'accept', 'dispense', 'collect']),
+      productId: z.string().nullable().optional().describe('For link_stock, e.g. pharmacy-product-furosemide'),
+      quantity: z.number().int().positive().nullable().optional().describe('For link_stock, units to supply, e.g. 28'),
+      reason: z.string().describe('One sentence for the patient'),
+    }),
+    yieldSchema: approval,
+    finalize: async (ctx) => {
+      if (!ctx.input?.approved) return declined(ctx.input?.note)
+      const a = ctx.args
+      const base = { patientId: a.patientId, resourceId: a.resourceId, expectedVersion: a.expectedVersion }
+      return a.command === 'link_stock'
+        ? run('pharmacy', { type: 'link_prescription_stock', ...base, productId: a.productId, quantity: a.quantity })
+        : run('pharmacy', { type: a.command, ...base })
+    },
+  })
+
+  const order_test = app.tool({
+    name: 'order_test',
+    description: 'Propose ordering a blood test for monitoring (for example U&E after starting a diuretic). Results arrive in diagnostics after time passes. Requires patient approval.',
+    schema: z.object({
+      patientId: z.string(), title: z.string().max(120),
+      panelId: z.enum(['fbc', 'ue', 'hba1c', 'lft', 'crp', 'lipids']), priority: z.enum(['routine', 'urgent']),
+      clinicalDetails: z.string().max(500), reason: z.string().describe('One sentence for the patient'),
+    }),
+    yieldSchema: approval,
+    finalize: async (ctx) => {
+      if (!ctx.input?.approved) return declined(ctx.input?.note)
+      const a = ctx.args
+      const names: Record<string, string> = { fbc: 'Full blood count', ue: 'Urea & electrolytes', hba1c: 'HbA1c', lft: 'Liver function tests', crp: 'C-reactive protein', lipids: 'Lipid profile' }
+      return run('gp', { type: 'order_test', patientId: a.patientId, title: a.title, bloodTestOrder: { panel: names[a.panelId], panelId: a.panelId, specimen: 'Blood', priority: a.priority, collection: 'next-round', clinicalDetails: a.clinicalDetails } })
+    },
+  })
+
+  const hospital_command = app.tool({
+    name: 'hospital_command',
+    description: 'Propose moving the patient\'s hospital attendance forward: assign (needs clinician), assess (needs clinician), refer, admit, or discharge (needs disposition, e.g. "Home with community follow-up"). Use the attendance id and version from get_patient_pathway medicines.attendance. Requires patient approval.',
+    schema: z.object({
+      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(),
+      command: z.enum(['assign', 'assess', 'refer', 'admit', 'discharge']),
+      clinician: z.string().nullable().optional(), disposition: z.string().nullable().optional(), location: z.string().nullable().optional(),
+      reason: z.string().describe('One sentence for the patient'),
+    }),
+    yieldSchema: approval,
+    finalize: async (ctx) => {
+      if (!ctx.input?.approved) return declined(ctx.input?.note)
+      const a = ctx.args
+      const extra: Record<string, unknown> = {}
+      if (a.clinician) extra.clinician = a.clinician
+      if (a.disposition) extra.disposition = a.disposition
+      if (a.location) extra.location = a.location
+      return run('hospital', { type: 'update_attendance', patientId: a.patientId, resourceId: a.resourceId, expectedVersion: a.expectedVersion, hospitalCommand: a.command, ...extra })
+    },
+  })
+
+  const complete_task = app.tool({
+    name: 'complete_task',
+    description: 'Propose closing an open GP practice task once what it asked for has been arranged (for example monitoring is booked). Use the task id and version from get_patient_pathway medicines.openTasks. Requires patient approval.',
+    schema: z.object({ patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(), reason: z.string().describe('One sentence for the patient') }),
+    yieldSchema: approval,
+    finalize: async (ctx) => (ctx.input?.approved
+      ? run('gp', { type: 'complete', patientId: ctx.args.patientId, resourceId: ctx.args.resourceId, expectedVersion: ctx.args.expectedVersion })
+      : declined(ctx.input?.note)),
+  })
+
+  return [ask_patient, create_task, send_message, book_appointment, schedule_visit, progress_referral, share_record, prescription_action, order_test, hospital_command, complete_task]
 }
 
-export const WRITE_TOOL_NAMES = new Set(['create_task', 'send_message', 'book_appointment', 'schedule_visit', 'progress_referral', 'share_record'])
+export const WRITE_TOOL_NAMES = new Set(['create_task', 'send_message', 'book_appointment', 'schedule_visit', 'progress_referral', 'share_record', 'prescription_action', 'order_test', 'hospital_command', 'complete_task'])

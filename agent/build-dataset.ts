@@ -6,8 +6,9 @@ import { sim, type Patient } from './sim.js'
 import { buildPathway, type Stage } from './pathway.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const QUERIES = ['SIM-0000', 'arthritis', 'back', 'elective', 'referral', 'heart', 'diabetes', 'asthma', 'frailty', 'hypertension', 'CKD']
-const MAX = Number(process.env.COHORT_MAX ?? 60)
+const CONDITION = process.env.COHORT_CONDITION ?? 'Arthritis'
+const QUERIES = [CONDITION.toLowerCase()]
+const MAX = Number(process.env.COHORT_MAX ?? 200)
 const ORDER: Stage[] = ['referred', 'assessed', 'waiting', 'treated', 'discharged']
 const DAY = 86_400_000
 
@@ -15,7 +16,12 @@ async function main() {
   const seen = new Map<string, Patient>()
   for (const q of QUERIES) {
     const r = await sim.patients(q).catch(() => null)
-    for (const p of r?.items ?? []) if (!seen.has(p.id) && seen.size < MAX) seen.set(p.id, p)
+    const total = r?.total ?? 0
+    for (let offset = 0; offset < total && seen.size < MAX; offset += 30) {
+      const page = offset === 0 ? r : await sim.get(`/api/sites/gp/patients?q=${encodeURIComponent(q)}&offset=${offset}`).catch(() => null) as any
+      for (const p of page?.items ?? []) if (p.conditions.includes(CONDITION) && !seen.has(p.id) && seen.size < MAX) seen.set(p.id, p)
+      if (!page?.items?.length) break
+    }
   }
   const ids = [...seen.keys()]
   console.log(`cohort: ${ids.length} patients`)
@@ -67,7 +73,7 @@ async function main() {
   }
 
   mkdirSync(join(here, 'data'), { recursive: true })
-  const out = { builtAt: new Date().toISOString(), source: 'sim.animahacks.com synthetic world', patients: rows, byCondition }
+  const out = { builtAt: new Date().toISOString(), condition: CONDITION, source: 'sim.animahacks.com synthetic world', patients: rows, byCondition }
   writeFileSync(join(here, 'data', 'cohort.json'), JSON.stringify(out, null, 1))
   console.log(`wrote data/cohort.json (${rows.length} patients, ${Object.keys(byCondition).length} groups)`)
 }

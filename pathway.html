@@ -92,9 +92,10 @@
       <ol class="steps" id="steps"></ol>
     </div>
     <div class="warning-callout" id="callout"></div>
-    <div class="card">
-      <h2 id="details-title">Capacity</h2>
-      <dl class="summary-list" id="details"></dl>
+    <div class="card" id="medicines-card" style="display:none">
+      <h2>Your medicines</h2>
+      <ol class="steps" id="rx-steps"></ol>
+      <dl class="summary-list" id="rx-details" style="margin-top:20px"></dl>
     </div>
     <div class="card">
       <h2>Recent activity</h2>
@@ -178,8 +179,10 @@
     { id: 'SIM-000504', name: 'Ben Cooper', type: 'MSK referral' },
     { id: 'SIM-000023', name: 'George Brown', type: 'Knee replacement' },
     { id: 'SIM-000002', name: 'George Evans', type: 'Referral returned' },
-    { id: 'SIM-000070', name: 'Daniel Williams', type: 'Rheumatology, interpreter' }
+    { id: 'SIM-000070', name: 'Daniel Williams', type: 'Rheumatology, interpreter' },
+    { id: 'SIM-000001', name: 'Amira Khan', type: 'Medicines and discharge' }
   ];
+  var RX_STAGES = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
 
   var STAGES = [
     ['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']
@@ -236,6 +239,7 @@
     var id = patient.id, gen = generation;
     return api('/api/patients/' + id + '/pathway').then(function (p) {
       if (gen !== generation) return;
+      if (pathway && p.errors && p.errors.length && !(p.events || []).length) return; // sim outage: keep last good state
       pathway = p;
       if (p.patient) patient = p.patient;
       renderPathway(); renderHome(); renderAccount();
@@ -245,7 +249,7 @@
   /* ---------- rendering ---------- */
   function firstName() { return (patient.name || '').split(' ')[0]; }
   function condition() { return (patient.conditions || [])[0] || 'care'; }
-  function fmt(ms) { var d = new Date(ms); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }); }
+  function fmt(ms) { var d = new Date(ms); return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); }
 
   function stageIndex(s) { for (var i = 0; i < STAGES.length; i++) if (STAGES[i][0] === s) return i; return -1; }
 
@@ -289,19 +293,36 @@
     });
 
     var co = $('callout'); co.innerHTML = '';
-    var blockers = pathway.blockers || [];
+    var blockers = (pathway.blockers || []).concat((pathway.medicines && pathway.medicines.blockers) || []);
     co.appendChild(el('h2', null, blockers.length ? 'Important' : 'What happens next'));
     if (blockers.length) blockers.slice(0, 3).forEach(function (b) { co.appendChild(el('p', null, esc(b))); });
     else co.appendChild(el('p', null, 'Nothing is blocking your pathway right now. Your care team will message you when something changes.'));
 
-    var dl = $('details'); dl.innerHTML = '';
-    (pathway.capacity || []).slice(0, 6).forEach(function (c) {
-      var row = el('div', 'summary-row');
-      row.appendChild(el('dt', null, esc(c.title)));
-      row.appendChild(el('dd', c.remaining === 0 ? 'stat' : null, (c.remaining != null ? c.remaining + ' of ' + c.total + ' free' : '')));
-      dl.appendChild(row);
-    });
-    if (!dl.children.length) dl.appendChild(el('div', 'summary-row', '<dt>Simulation time</dt><dd>' + esc(pathway.nowText || '') + '</dd>'));
+    var med = pathway.medicines;
+    var mc = $('medicines-card');
+    if (med && med.prescriptions.length) {
+      mc.style.display = 'block';
+      var rs = $('rx-steps'); rs.innerHTML = '';
+      var ri = RX_STAGES.findIndex(function (s) { return s[0] === med.stage; });
+      RX_STAGES.forEach(function (s, i) {
+        var state = i < ri ? 'done' : i === ri ? (med.stage === 'collected' ? 'done' : 'current') : 'pending';
+        var li = el('li', 'step step--' + state);
+        var rail = el('div', 'rail'); rail.appendChild(el('div', 'marker')); if (i < RX_STAGES.length - 1) rail.appendChild(el('div', 'line'));
+        li.appendChild(rail);
+        var body = el('div'); body.appendChild(el('div', 'name', s[1]));
+        if (i === ri) body.appendChild(el('p', 'detail', esc(med.prescriptions.map(function (p) { return p.drug + (p.quantity ? ', ' + p.quantity + ' units' : ''); }).join('; '))));
+        li.appendChild(body); rs.appendChild(li);
+      });
+      var rd = $('rx-details'); rd.innerHTML = '';
+      var rows = [];
+      med.prescriptions.forEach(function (p) { rows.push([p.drug, p.status + (p.productId ? '' : ', not linked to stock')]); });
+      med.tests.forEach(function (t) { rows.push(['Test: ' + t.title, t.status]); });
+      med.visits.forEach(function (v) { rows.push(['Home visit: ' + v.title, v.status]); });
+      med.openTasks.forEach(function (t) { rows.push(['Practice task', t.title]); });
+      if (med.bed) rows.push(['Hospital bed', med.bed.title + (med.bed.barrier ? ' (' + med.bed.barrier + ')' : '')]);
+      rows.forEach(function (r) { var row = el('div', 'summary-row'); row.appendChild(el('dt', null, esc(r[0]))); row.appendChild(el('dd', null, esc(r[1]))); rd.appendChild(row); });
+    } else mc.style.display = 'none';
+
 
     var tl = $('timeline'); tl.innerHTML = '';
     (pathway.events || []).slice(-8).reverse().forEach(function (e) {
@@ -463,8 +484,20 @@
 
   /* ---------- demo palette ---------- */
   var palette = $('palette'), list = $('palette-list'), sel = 0;
+  function advanceClock(minutes) {
+    closePalette();
+    addEvent('Demo: simulation clock advanced by ' + minutes + ' minutes');
+    api('/api/clock/advance', { minutes: minutes }).then(function () { return loadPathway(); }).then(function () {
+      if (!busy && !pending.length) turn({ message: 'Time has passed. Check my records again and tell me only if something changed or there is a next step.' });
+    });
+  }
+
   function renderPalette() {
     list.innerHTML = '';
+    var extra = el('li', 'palette-item');
+    extra.innerHTML = '<span class="pid">demo</span><span class="pname">Advance simulation clock 2 hours</span><span class="ptype">clock</span>';
+    extra.addEventListener('click', function () { advanceClock(120); });
+    list.appendChild(extra);
     PATIENTS.forEach(function (p, i) {
       var li = el('li', 'palette-item');
       li.innerHTML = '<span class="pid">' + p.id + '</span><span class="pname">' + p.name + '</span><span class="ptype">' + p.type + '</span>';

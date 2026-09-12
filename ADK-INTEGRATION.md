@@ -103,6 +103,20 @@ Gotchas found while building:
 - Free text typed while a tool is yielded produces `400 No tool output found for function call`. The UI therefore answers the pending yield with the typed text (`approved` inferred, `note` = text) instead of starting a new turn.
 - Writes run in the world `13health-agent` (key in `agent/key-agent.txt`, gitignored) so `13health` stays clean. `POST /api/keys` returns the key as `apiKey`.
 
+## Medicines pathway (Amira Khan, SIM-000001)
+
+`pathway.ts` also returns a `medicines` section: prescriptions with status/version/linked product, tests, visits, open practice tasks, the occupied bed and its discharge barrier, the hospital attendance, an overall stage (`prescribed → approved → dispensed → collected`) and medicine-specific blockers. The UI shows it as a second stepper on the pathway page.
+
+Write tools for it: `prescription_action` (`link_stock`, `review`, `accept`, `dispense`, `collect` on `/api/sites/pharmacy/actions`; dispensing deducts real stock), `order_test` (`bloodTestOrder`, result appears in diagnostics after the clock advances), `schedule_visit`, and `hospital_command` (`update_attendance` with `assign/assess/refer/admit/discharge`). Verified end to end on a fresh session: assess (hospital_command) → dispense → collect (stock 112 → 84) → clock advance completes the home visit → complete_task closes "Arrange post-discharge monitoring" → discharge home with community follow-up (attendance `discharged`, v4). The ordered U&E stays `open` until a later diagnostics round.
+
+Changing the agent's tools changes its fingerprint, so old sessions return `pipeline structure has changed`; `server.ts` then starts a fresh session for the patient instead of failing.
+
+Time: nothing new happens until the clock moves. `POST /api/clock/advance {minutes}` on the server wraps `/api/clock`; the Ctrl+K palette has "Advance simulation clock 2 hours", which advances, re-renders the pathway and asks the agent to re-check the records.
+
+## Cohort dataset
+
+`agent/build-dataset.ts` pulls every patient with one condition (default `Arthritis`, 86 patients) through `buildPathway`, and writes `agent/data/cohort.json`: per patient the stage reached, days between stage transitions, waiting days and blockers; per condition the stage counts, median/min/max transition days, common blockers and needs. The `get_similar_pathways` tool reads it so the agent can answer "how long does this usually take" with figures and the synthetic-data caveat. Rebuild with `SIM_KEY=$(cat key-agent.txt) npx tsx build-dataset.ts` (`COHORT_CONDITION=` to change condition).
+
 ## Run
 
 ```bash
