@@ -52,3 +52,38 @@ test('search pagination fills forty unique eligible candidates and stops at the 
   assert.deepEqual(cohort.map(p => p.patientId), patients.slice(0, 40).map(p => p.id))
   assert.deepEqual(pages, ['/api/sites/gp/patients?q=arthritis&offset=30'])
 })
+
+for (const failure of ['timeout', 'truncated']) {
+  test(`refuses cohort and patient preparation when hospital ${failure} hides a waiting theatre slot`, async t => {
+    const patient = person('id-blocked', ['Awaiting elective surgery', 'Diabetes', 'CKD'], ['Transport'])
+    fixture(t, [patient], { 'id-blocked': [{ kind: 'theatre-slot', status: 'waiting' }] })
+    const complete = await preparePatientRun(patient.id)
+    assert.deepEqual(complete.modifiers, ['add_hba1c', 'renal_caution', 'transport_flag', 'theatre_blocked'])
+    const originalView = sim.view
+    t.mock.method(sim, 'view', async (...args: Parameters<typeof sim.view>) => {
+      if (args[0] === 'hospital') {
+        if (failure === 'timeout') throw new Error('hospital request timed out')
+        return { now, resources: [], resourceTotal: 501 }
+      }
+      return originalView(...args)
+    })
+    await assert.rejects(loadCohort(), /incomplete.*id-blocked.*hospital/i)
+    await assert.rejects(preparePatientRun(patient.id), /incomplete.*id-blocked.*hospital/i)
+  })
+}
+
+for (const missing of ['empty', 'failed']) {
+  test(`refuses stale search demographics when the refreshed patient lookup is ${missing}`, async t => {
+    const patient = person('id-stale', ['Awaiting elective surgery'], [])
+    fixture(t, [patient], { 'id-stale': [{ kind: 'theatre-slot', status: 'waiting' }] })
+    t.mock.method(sim, 'patients', async (q: string) => {
+      if (q === patient.id) {
+        if (missing === 'failed') throw new Error('patient lookup failed')
+        return { total: 0, items: [] }
+      }
+      return { total: 1, items: [patient] }
+    })
+    await assert.rejects(loadCohort(), /patient|incomplete/i)
+    await assert.rejects(preparePatientRun(patient.id), /patient|incomplete/i)
+  })
+}

@@ -7,6 +7,11 @@ const queries = ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orth
 const eligibleCondition = /awaiting elective surgery|\b(?:joints?|knees?|hips?|msk|arthritis|osteoarthritis)\b/i
 let featuredPatientIds: string[] = []
 
+function requireCompletePathway(patientId: string, pathway: Pathway): asserts pathway is Pathway & { patient: Patient } {
+  if (pathway.errors.length) throw new Error(`Incomplete pre-op records for ${patientId}: ${pathway.errors.join('; ')}`)
+  if (!pathway.patient) throw new Error(`Patient not found in refreshed records: ${patientId}`)
+}
+
 function makeRun(patient: Patient, pathway: Pathway, now: number): PatientRun {
   const conditions = patient.conditions ?? []
   const needs = patient.needs ?? []
@@ -58,13 +63,13 @@ export async function loadCohort(): Promise<PatientRun[]> {
   console.info(`[preop cohort] Reading ${candidates.length} patient pathways, up to four concurrently`)
   const pathways = await readInBatches(candidates, async patient => {
     const pathway = await buildPathway(patient.id)
+    requireCompletePathway(patient.id, pathway)
     console.info(`[preop cohort] Read ${++completed}/${candidates.length} in ${Date.now() - startedAt}ms`)
     return pathway
   })
   const cohort = candidates.flatMap((patient, index) => {
     const pathway = pathways[index]
-    if (pathway.errors.length) console.error(`Pre-op pathway ${patient.id}: ${pathway.errors.join('; ')}`)
-    const currentPatient = pathway.patient ?? patient
+    const currentPatient = pathway.patient
     if (!currentPatient.conditions?.some(condition => eligibleCondition.test(condition))) return []
     if (!currentPatient.conditions.some(c => /awaiting elective surgery/i.test(c)) && !pathway.events.some(e => ['surgery', 'theatre-slot', 'referral'].includes(e.kind))) return []
     return [makeRun(currentPatient, pathway, pathway.now || clock.now)]
@@ -86,7 +91,7 @@ export async function loadCohort(): Promise<PatientRun[]> {
 export function getFeaturedPatientIds(): string[] { return [...featuredPatientIds] }
 export async function preparePatientRun(patientId: string): Promise<PatientRun> {
   const pathway = await buildPathway(patientId)
-  if (!pathway.patient) throw new Error(`Patient not found: ${patientId}`)
+  requireCompletePathway(patientId, pathway)
   const now = pathway.now || (await sim.clock()).now
   return makeRun(pathway.patient, pathway, now)
 }

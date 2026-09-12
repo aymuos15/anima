@@ -57,6 +57,9 @@ export async function buildPathway(patientId: string): Promise<Pathway> {
 
   for (const entry of views) {
     if (!entry) continue
+    if ((entry.v.resourceTotal ?? entry.v.resources.length) > entry.v.resources.length) {
+      errors.push(`${entry.site}: incomplete resource inventory (${entry.v.resources.length}/${entry.v.resourceTotal})`)
+    }
     now = Math.max(now, entry.v.now ?? 0)
     for (const r of entry.v.resources as Resource[]) {
       if (r.kind === 'capacity') {
