@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { adk } from '@animahealth/adk'
+import { SUPABASE_CA } from './supabase-ca.js'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -25,7 +26,8 @@ async function pickStore() {
     // Create the pool here (rather than letting the store require 'pg' by name at runtime) so the
     // serverless bundle includes pg.
     const [{ postgresStore }, pg] = await Promise.all([import('@animahealth/adk/stores/postgres'), import('pg')])
-    return postgresStore({ pool: new pg.default.Pool({ connectionString: process.env.DATABASE_URL, max: 3 }) })
+    // Supabase's pooler chain is signed by Supabase's own root CA, so verify against it explicitly.
+    return postgresStore({ pool: new pg.default.Pool({ connectionString: process.env.DATABASE_URL, max: 3, ssl: { ca: SUPABASE_CA } }) })
   }
   const { sqliteStore } = await import('@animahealth/adk/stores/sqlite')
   return sqliteStore(join(here, 'sessions.db'))
