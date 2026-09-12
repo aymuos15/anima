@@ -13,6 +13,8 @@ import { stepTimeline } from './preop/timeline.js'
 import { classify, detectRedFlag, BLOODS_FOLLOWUP } from './preop/rules.js'
 import { conversations, conversation, approval, renderConversation, lintOutbound, PICKUP, CLOSING, captureConversationSnapshot, restoreConversationSnapshot } from './preop/agent.js'
 import { retainRefs, staffAction, escalatePatient } from './preop/tools.js'
+import { clearSymptomDenial, supportAgreement } from './preop/answers.js'
+import { preparationClarification } from './preop/clarifications.js'
 import { getAppointmentSessions } from './tools/read.js'
 import { writeTools } from './tools/write.js'
 import { assertAllowed, sendIMessage, pollIMessages } from './imessage.js'
@@ -56,14 +58,14 @@ async function deliver(patientId: string, text: string, eventText?: string) {
   conversation(p).lastText = text
   if (p.phone) { const sent = await sendIMessage(p.phone, text); if (!sent) console.warn(`[preop] ${patientId}: send unavailable; transcript/console fallback active`) }
 }
-async function say(patient: PatientRun, text: string, inbound = '', event = false) {
+async function say(patient: PatientRun, text: string, inbound = '', event = false, informational = false) {
   patient = getState().patients[patient.patientId]
   const c = conversation(patient)
-  if (c.paused || c.escalated) return false
-  if (c.turns >= 8) { c.paused = true; c.deferredText = text; c.deferredEvent = event; await deliver(patient.patientId, PICKUP); return false }
+  if (c.escalated || (c.paused && !informational)) return false
+  if (!informational && c.turns >= 8) { c.paused = true; c.deferredText = text; c.deferredEvent = event; await deliver(patient.patientId, PICKUP); return false }
   if (event) await deliver(patient.patientId, text, text)
   else await deliver(patient.patientId, await renderConversation(patient, text, inbound))
-  c.turns++
+  if (!informational) c.turns++
   return true
 }
 async function runWrite(patient: PatientRun, name: string, args: Record<string, unknown>, item: ChecklistItem['id']) {
@@ -157,10 +159,16 @@ async function handleDemoReply(patientId: string, text: string) {
     try { await escalatePatient(p, symptom) } finally { const explanation = c.pendingEvent!.patientExplanation; await deliver(patientId, explanation, explanation); c.pendingEvent = undefined }
     return
   }
+  const clarification = preparationClarification(p, c, text)
+  if (clarification) {
+    const pendingPrompt = c.lastText
+    if (await say(p, clarification, text, false, true)) c.lastText = pendingPrompt
+    return
+  }
   if (c.paused) return
   const item = (id: ChecklistItem['id']) => p.checklist.find(i => i.id === id)!
   const settle = (id: ChecklistItem['id'], state: ChecklistItem['state'], detail: string) => { Object.assign(item(id), { state, detail, updatedAtStep: getState().step }); savePatient(p) }
-  const answer = approval(text)
+  const answer = approval(text) === 'ambiguous' && supportAgreement(text, c, p) ? 'yes' : approval(text)
   const reported = /^(?:yes|yeah|yep)\b/i.test(text.trim()) ? 'yes' : /^(?:no|nope|not yet)\b/i.test(text.trim()) ? 'no' : answer
   if (c.stage === 'physio') {
     const taught = reported === 'yes' || (!/\b(no|not|never|haven.t)\b/i.test(text) && /shown|taught|doing (?:the |my )?exercises/i.test(text))
@@ -220,7 +228,7 @@ async function handleDemoReply(patientId: string, text: string) {
     c.stage = 'red_flag'; if (await say(p, 'Have you had any chest pain, breathlessness or fever since you were booked?', text)) c.pendingQuestion = 'anaesthetic_red_flag'; return
   }
   if (c.stage === 'red_flag') {
-    if (answer !== 'no' && !/^(none|no symptoms|not at all)$/i.test(text.trim())) { await say(p, 'Please answer yes or no. Have you had any chest pain, breathlessness or fever since you were booked?', text); return }
+    if (answer !== 'no' && !clearSymptomDenial(text) && !/^(none|no symptoms|not at all)$/i.test(text.trim())) { await say(p, 'Please answer yes or no. Have you had any chest pain, breathlessness or fever since you were booked?', text); return }
     c.pendingQuestion = undefined
     if (c.earlySafetyCheck === 'pending') {
       c.earlySafetyCheck = 'clear'; c.stage = 'physio'

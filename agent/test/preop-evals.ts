@@ -1,9 +1,10 @@
-// Eleven real ADK conversation scenarios with captured simulator writes; no external patient sends.
+// Thirteen real ADK conversation scenarios with captured simulator writes; no external patient sends.
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { sim, type Patient } from '../sim.js'
 const mock = process.argv.includes('--mock')
-process.env.PORT = '8792'; process.env.PREOP_MODEL_OFF = mock ? '1' : '0'
+const onlyScenario = Number(process.argv.find(arg => arg.startsWith('--scenario='))?.split('=')[1] ?? 0)
+process.env.PORT = process.env.PREOP_EVAL_PORT ?? '8792'; process.env.PREOP_MODEL_OFF = mock ? '1' : '0'
 const file = new URL('../demo-state.json', import.meta.url), prior = existsSync(file) ? readFileSync(file) : undefined
 const writes: any[] = [], resources: any[] = [], now = Date.UTC(2026, 8, 12, 7)
 let appointmentReads = 0, startAppointmentReads = 0, emptySlots = false
@@ -11,7 +12,7 @@ let active = 0, modelTurns = 0, successfulModelResponses = 0
 const turnEvidence: any[] = []
 const originalFetch = globalThis.fetch
 globalThis.fetch = (async (input: any, init: any) => { const model = String(input instanceof Request ? input.url : input).includes('/responses'); if (model) modelTurns++; const response = await originalFetch(input, init); if (model && response.ok) successfulModelResponses++; return response }) as typeof fetch
-const people: Patient[] = Array.from({ length: 11 }, (_, i) => ({ id: `EVAL-${i + 1}`, name: `Eval Patient${i + 1}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i === 8 ? ['Diabetes', 'CKD'] : [])], needs: i === 8 ? ['Transport'] : [], goals: [], localIds: {} }))
+const people: Patient[] = Array.from({ length: 13 }, (_, i) => ({ id: `EVAL-${i + 1}`, name: `Eval Patient${i + 1}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i === 8 ? ['Diabetes', 'CKD'] : i === 11 ? ['CKD'] : [])], needs: i === 8 ? ['Transport'] : i === 12 ? ['Carer involvement'] : [], goals: [], localIds: {} }))
 sim.clock = async () => ({ now, paused: true })
 sim.patients = async q => ({ total: people.length, items: q.startsWith('EVAL-') ? people.filter(p => p.id === q) : people })
 sim.view = async (_site, patient) => ({ now, resources: [{ id: 'surgery-' + patient, patientId: patient, kind: patient === 'EVAL-9' ? 'theatre-slot' : 'surgery', title: 'Elective knee surgery', status: patient === 'EVAL-9' ? 'waiting' : 'booked', createdAt: now, dueAt: now + 28 * 86400000 }, ...resources.filter(r => r.patientId === patient)] })
@@ -27,7 +28,7 @@ async function api(path: string, body: unknown, allowed: string[] = []) {
   const beforeWrites = writes.length, beforeTranscript = getState().patients[`EVAL-${active}`]?.transcript.length ?? 0
   let error: unknown
   try {
-    const r = await fetch('http://127.0.0.1:8792'+path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const r = await fetch('http://127.0.0.1:'+process.env.PORT+path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     const out = await r.json() as any; assert.equal(r.status, 200, JSON.stringify(out)); return out
   } catch (e) { error = e; throw e }
   finally {
@@ -45,6 +46,7 @@ const run = () => getState().patients[`EVAL-${active}`]
 const last = () => run().transcript.filter(m => m.from === 'agent').at(-1)!.text
 const results: any[] = []
 async function scenario(number: number, name: string, fn: () => Promise<void>, startStep = 0) {
+  if (onlyScenario && onlyScenario !== number) return
   active = number; const beforeWrites = writes.length, beforeModels = modelTurns, beforeSuccess = successfulModelResponses, beforeTurns = turnEvidence.length
   try {
     resetState(`eval-${number}`, await loadCohort()); conversations.clear()
@@ -242,4 +244,51 @@ try {
     assert.notEqual(run().status, 'ready', 'Pending test results must not turn the patient green')
     assert.match(run().checklist.find(i => i.id === 'anaesthetic_questions')!.detail!, /Medicines: Paracetamol; allergies\/previous anaesthetic: No allergies; no new red-flag symptoms/)
   }, 1)
-} finally { if(prior)writeFileSync(file,prior);else if(existsSync(file))unlinkSync(file);process.exit(results.length===11 && results.every(r=>r.pass)?0:1) }
+  await scenario(12, 'appointment questions explain preparation and retain real choices without approving writes', async () => {
+    assert.ok(run().modifiers.includes('renal_caution'))
+    await reply('yes'); await reply('Going well')
+    const slots = structuredClone(conversation(run()).slots), before = writes.length
+    await reply('perhaps'); assert.match(last(), /Please choose option/)
+    for (const question of ["What's it for?", "I'm confused—why do I need this visit?", 'Will it check my kidneys?']) {
+      await reply(question)
+      assert.match(last(), /kidney function/i)
+      if (!question.includes('kidneys')) { assert.match(last(), /full blood count/i); assert.match(last(), /ECG|heart tracing/) }
+      else assert.match(last(), /U&E blood test/)
+      assert.equal(conversation(run()).stage, 'slot')
+      assert.deepEqual(conversation(run()).slots, slots)
+      assert.equal(writes.length, before)
+      assert.equal(run().checklist.find(i => i.id === 'bloods')!.state, 'not_started')
+    }
+    await reply('1', ['book_appointment', 'create_task', 'order_test'])
+    assert.equal(conversation(run()).stage, 'medicines')
+    assert.equal(writes.filter(w => w.patientId === run().patientId && w.type === 'book_appointment').length, 1)
+    assert.deepEqual(writes.filter(w => w.patientId === run().patientId && w.type === 'order_test').map(w => w.bloodTestOrder.panelId), ['fbc', 'ue'])
+  })
+  await scenario(13, 'clarifications preserve the care budget and natural answers retain safety and consent', async () => {
+    const startWrites = writes.length
+    await reply('What do you mean by fever?'); assert.match(last(), /high temperature/)
+    assert.equal(writes.length, startWrites)
+    assert.equal(conversation(run()).pendingQuestion, 'anaesthetic_red_flag')
+    await reply('No, I have not had any of those symptoms'); assert.equal(conversation(run()).stage, 'physio')
+    await reply('yes'); await reply('Going well')
+    const turns = conversation(run()).turns, slots = structuredClone(conversation(run()).slots)
+    for (const question of ['Before I choose, explain the appointment please', 'Can my daughter sit with me', 'I’m confused about this appointment', 'What happens there?', 'Do I need to fast?', 'Which bloods?', 'What is this visit for?', 'Will it check my kidneys?', 'Can I bring my dog?', 'Why?']) {
+      await reply(question)
+      assert.equal(conversation(run()).stage, 'slot'); assert.deepEqual(conversation(run()).slots, slots)
+      assert.equal(conversation(run()).turns, turns); assert.equal(conversation(run()).paused, false)
+      assert.equal(writes.length, startWrites)
+    }
+    await reply('2', ['book_appointment', 'create_task', 'order_test'])
+    await reply('Paracetamol'); await reply('No allergies')
+    assert.equal(conversation(run()).stage, 'transport')
+    const beforeCarer = writes.length
+    await reply('Yes, please include my carer', ['create_task'])
+    assert.equal(conversation(run()).stage, 'waiting_results')
+    assert.deepEqual(writes.slice(beforeCarer).map(w => w.title), ['Include carer in pre-operative support plan'])
+    const beforeUrgent = writes.length
+    await reply('What is fever? I have chest pain now', ['create_task'])
+    assert.equal(last(), classify('red_flag_raised', run()).patientExplanation)
+    assert.equal(writes.length, beforeUrgent + 1)
+    assert.equal(run().status, 'clinical_review')
+  }, 1)
+} finally { if(prior)writeFileSync(file,prior);else if(existsSync(file))unlinkSync(file);process.exit(results.length===(onlyScenario ? 1 : 13) && results.every(r=>r.pass)?0:1) }

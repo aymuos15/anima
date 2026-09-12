@@ -69,3 +69,14 @@ test('doctor-approved results check ECG completion without interpreting either t
   assert.ok(classify('ecg_new_af', patient).staffAction, 'flagged ECG still has clinician-only review')
   assert.doesNotMatch(classify('bloods_high_k', patient).patientExplanation, /24 hours/)
 })
+
+test('being confused about an instruction is a clarification, while clinical confusion remains urgent', () => {
+  for (const text of ["I'm confused—why do I need this visit?", 'I am confused about this appointment', "I'm confused, what are these blood tests for?"]) assert.equal(detectRedFlag(text), null, text)
+  for (const text of ['I am confused', 'I feel confused', 'I am suddenly confused about this appointment', 'I feel confused, why do I need this visit?', "I'm confused—why do I need this visit? I have chest pain", "I'm confused about this appointment but I have a fever"]) assert.ok(detectRedFlag(text), text)
+})
+
+test('explicit symptom definitions are informational while surrounding reports still escalate', () => {
+  for (const text of ['What do you mean by fever?', 'What does breathlessness mean?', 'Can you define chest pain?', 'What is confusion?', 'What is "fever"?']) assert.equal(detectRedFlag(text), null, text)
+  for (const text of ['What is fever? I have chest pain now', 'I have chest pain. What do you mean by fever?', 'Why do you ask? I have chest pain right now', 'Do I have a fever?', 'What is fever? I have it now', 'What does fever mean? I have a fever']) assert.ok(detectRedFlag(text), text)
+  assert.ok(detectRedFlag('yes', 'anaesthetic_red_flag'))
+})

@@ -37,11 +37,21 @@ export const BLOODS_FOLLOWUP = 'If not, someone should reach out to you shortly 
 
 const phrases = ['chest pain', 'chest tightness', 'short of breath', 'breathless', "can't breathe", 'cannot breathe', 'fever', 'temperature', 'bleeding', 'black stools', 'confused', 'confusion', 'collapsed', 'fainted', 'swollen leg', 'calf pain']
 export function detectRedFlag(text: string, pendingQuestion?: 'anaesthetic_red_flag'): string | null {
-  const normalized = text.toLowerCase().replace(/[’‘]/g, "'")
+  let normalized = text.toLowerCase().replace(/[’‘]/g, "'")
+  // Remove only complete definition requests, retaining all surrounding symptom reports.
+  if (!/\bi (?:have|am having|am experiencing|feel) (?:it|that|this)\b/.test(normalized)) {
+    for (const phrase of [...phrases, 'breathlessness']) {
+      const term = `[\\"'“”]?${phrase}[\\"'“”]?`
+      const definition = new RegExp(`(^|[.!?;]\\s*)\\s*(?:(?:what (?:do you mean by|is)|(?:can|could) you (?:explain|define))\\s+${term}|what does\\s+${term}\\s+mean)\\s*(?=[.!?;]|$)`, 'g')
+      normalized = normalized.replace(definition, '$1definition request')
+    }
+  }
   for (const clause of normalized.split(/[.!?;]|,(?=\s*(?:i|my|have|am|feel)\b)|\b(?:but|however|although)\b|\band\s+(?=(?:i\s+)?(?:have|am|feel|developed)\b)/)) {
     for (const phrase of phrases) {
       const index = clause.indexOf(phrase)
       if (index < 0) continue
+      // A request to explain an instruction is not a report of altered mental state.
+      if (phrase === 'confused' && /^\s*i(?:'m| am)\s*$/.test(clause.slice(0, index)) && /^confused\s*(?:[—–,:-]\s*)?(?:(?:why|what|which|how)\b|(?:about|by)\s+(?:the|this|my|these|your)\s+(?:appointment|visit|exercises|question|instructions)\b)/.test(clause.slice(index))) continue
       let before = clause.slice(0, index)
       for (const other of phrases) before = before.replaceAll(other, '')
       before = before.replace(/,/g, ' ').replace(/\b(?:or|and|any|new|a|the|signs|of)\b/g, '').replace(/\s+/g, ' ').trim()
