@@ -1,19 +1,19 @@
 # Pre-op concierge — demo design (12 Sep 2026)
 
-Status: approved by Aaryan 14:30. Freeze 16:30. Submission 18:30. Stall 18:30–19:30.
+Status: approved by Aaryan 14:30; cohort and modifiers revision 14:50. Freeze 16:30. Submission 18:30. Stall 18:30–19:30.
 
 This is the spec the development agents build from. It sits on top of what already exists in this repo (`agent/`, `pathway.html`). Nothing here replaces the ADK app, the sim client, the pathway stitcher or the chat handler; it adds a pre-op layer beside them.
 
 ## 0. YAGNI. Read this before anything else
 
-This is a four-minute stall demo that runs once, on one MacBook, driven by one presenter, for two hard-coded patients. It is thrown away on Monday. Every line of code is judged by one question: does the §2 script need it to land? If not, do not write it.
+This is a four-minute stall demo that runs once, on one MacBook, driven by one presenter, on real patients pulled live from the Anima simulation. It is thrown away on Monday. Every line of code is judged by one question: does the §2 script need it to land? If not, do not write it.
 
 Hard rules for every build agent on every track:
 
 - No auth, no users, no sessions beyond the ADK session id, no roles, no permissions.
 - No database beyond the one JSON file in §5 and the ADK's existing SQLite. No migrations, no ORM, no schema versioning.
 - No framework, no bundler, no React, no Tailwind, no build step. Static HTML, the existing `pathway.css`, plain fetch and polling. No WebSockets, no SSE.
-- No generic anything. Two patients, one procedure, five items, the outcomes in §6 and nothing more. Hard-code names, ids, dates and strings where the spec gives them. Do not write a "protocol engine" that could support other procedures.
+- No generic anything. One protocol, five items, the outcomes in §6 and nothing more. Hard-code the protocol, the wording and the outcome sets. Never hard-code patients: names, ids, needs, conditions and surgery dates come from the sim at run time (§5a). Do not write a "protocol engine" that could support other procedures.
 - No retries, no queues, no rate limiting, no caching layers, no feature flags, no config system beyond env vars already in use.
 - No input validation beyond what stops the demo crashing. No error pages. Log to console and move on.
 - No tests beyond §13. No test infrastructure, no mocks framework, no coverage.
@@ -23,13 +23,15 @@ Hard rules for every build agent on every track:
 - No security work. The API key stays in the gitignored file as it is today. The iMessage whitelist is one env var, nothing more.
 - No accessibility, i18n, responsive layout, dark mode, animation or polish that the judge will not see on the stall screen.
 
-If you find yourself writing a class, a plugin system, a registry, a factory, a middleware chain, or a file over 300 lines, stop and delete it. If a track needs something outside this spec to make the script land, post one line in the team channel and wait. Do not build it speculatively.
+If you find yourself writing a class, a plugin system, a registry, a factory, a middleware chain, or a new file over 300 lines, stop and delete it. If a track needs something outside this spec to make the script land, post one line in the team channel and wait. Do not build it speculatively.
 
 Done means: the beat in §2 that your track serves plays end to end on the MacBook. Not "production-ready", not "extensible", not "clean".
 
+YAGNI cuts breadth, not depth. The cohort selection, the three or four featured patients, the eight branches, the agent prompt and skill, the rules wording and the evals are built to full refinement. Cutting those is not YAGNI, it is a broken demo.
+
 ## 1. What the demo is
 
-An agent that gets a patient who is already booked for elective surgery ready for theatre: it works through the pre-op checklist with the patient over a real message thread on the patient's own phone, writes every step into the NHS record, reacts correctly to each test result as it arrives, and stops and hands over the moment anything clinical is raised. Two screens beside the patient show the same journey from the patient's side and the clinician's side.
+An agent that gets a patient who is already booked for elective surgery ready for theatre: it works through the pre-op checklist with the patient over a real message thread on the patient's own phone, writes every step into the NHS record, reacts correctly to each test result as it arrives, and stops and hands over the moment anything clinical is raised. The patients are real records from the simulation, chosen by the agent at run time, not fixtures. Two screens beside the judge show the same journey from the patient's side and the clinician's side.
 
 Pitch line: elective surgery is the biggest backlog in the NHS. Patients get booked, then nobody makes sure they are ready, and operations get cancelled on the day for a missed blood test. This is the coordinator that gets every booked patient ready.
 
@@ -39,20 +41,20 @@ Judging criteria are NHS relevance and impact, quality of the working product, o
 
 | t | Beat | What the judge sees |
 |---|---|---|
-| 0:00 | Pitch line, one breath. | Console on laptop: two patient cards. |
-| 0:15 | Judge picks Mohammed Ali or George Brown, types their own mobile number, presenter presses **Start**. | Card flips to "contacting…". |
+| 0:00 | Pitch line, one breath. | Console on laptop: three or four featured patient cards pulled from the live world, with the rest of the cohort listed below them. |
+| 0:15 | Judge picks any card, types their own mobile number, presenter presses **Start**. | Card flips to "contacting…". The card shows the needs and conditions the agent read from the record, so the judge sees it is real data. |
 | 0:30 | Judge's phone buzzes with an iMessage from the pre-op team. First question: have you started the physio exercises? Judge replies as the patient. Agent explains bloods are needed and offers two real slots. Judge picks one. | Patient app: readiness bar moves, checklist items flip. Board: row turns amber. Record pane: appointment and blood order appear. |
 | 2:00 | Presenter presses **+7 days**. Results arrive. | Readiness completes, row turns green, "Ready for theatre". Agent texts the judge the plain-English result. |
-| 2:30 | Second card. Agent asks the anaesthetic question about chest pain or breathlessness. Judge says yes. | Agent thanks them, asks nothing more, files an urgent task, gives the 999 line, stops. Board row turns red, "Clinical review". Presenter: the agent never diagnoses, it stops and hands over. |
+| 2:30 | Second card, ideally one with a recorded need such as transport or a condition such as diabetes, so the agent visibly adapts. Agent asks the anaesthetic question about chest pain or breathlessness. Judge says yes. | Agent thanks them, asks nothing more, files an urgent task, gives the 999 line, stops. Board row turns red, "Clinical review". Presenter: the agent never diagnoses, it stops and hands over. |
 | 3:15 | Close. | Board header: booked patients in this world and how many are not ready. Closing line names OpenAI and the Anima ADK. |
 
 The only network dependencies are the model call, the sim call and iMessage. If iMessage fails at the stall, the console has a text box that plays the same conversation on screen.
 
 ## 3. Scope and cuts
 
-In scope: two patients, one procedure protocol (joint replacement), five checklist items, eight outcome branches, iMessage transport, patient app additions, clinician board, demo console, timeline with rewind, evals per branch, voice lane behind a gate.
+In scope: a cohort pulled live from the sim with three or four featured patients, one pre-op protocol for elective surgery with record-driven modifiers, five checklist items, eight outcome branches, iMessage transport, patient app additions, clinician board, demo console, timeline with rewind, evals per branch, voice lane behind a gate.
 
-Cut, do not build: cohort sweep beyond one count on the board, interpreter or language beat, the ten-disease chat, agent-built pitch deck, authentication, any procedure other than joint replacement, any channel other than iMessage and the gated voice lane, SMS via the sim as a user-facing channel.
+Cut, do not build: cohort sweep beyond one count on the board, a language switch or any non-English speech, the ten-disease chat, agent-built pitch deck, authentication, a second protocol, any channel other than iMessage and the gated voice lane, SMS via the sim as a user-facing channel.
 
 ## 4. Architecture
 
@@ -62,7 +64,7 @@ Judge's phone  ◄── iMessage ──►  Messages.app on the MacBook
                                      ▼
 agent/imessage.ts  ──────────►  agent/server.ts  ──────────►  ADK app (agent/app.ts)
                                      │  /api/demo/*   /api/board          preop_agent (agent/preop/agent.ts)
-                                     │                                     skill: agent/preop/skills/joint-replacement.md
+                                     │                                     skill: agent/preop/skills/elective-preop.md
                                      ▼                                     rules: agent/preop/rules.ts
                             agent/preop/store.ts  (demo-state.json, snapshots)
                                      │
@@ -92,8 +94,11 @@ interface DemoState {
 interface PatientRun {
   patientId: string
   name: string
-  procedure: 'joint-replacement'
-  surgeryDate: string                 // ISO date = sim now at Start + 28 days
+  procedureLabel: string              // from the record: surgery resource title, else the condition, else 'elective surgery'
+  modifiers: Modifier[]               // §5a, derived from the record at Start
+  needs: string[]                     // copied from the sim patient
+  conditions: string[]                // copied from the sim patient
+  surgeryDate: string                 // ISO date: the sim surgery resource dueAt if present, else sim now at Start + 28 days
   phone?: string                      // E.164, whitelisted
   sessionId?: string                  // ADK session
   status: 'not_contacted' | 'in_progress' | 'ready' | 'clinical_review' | 'done'
@@ -121,7 +126,33 @@ interface ResultRecord {
 }
 
 interface DemoSnapshot { step: number; takenAt: number; patients: Record<string, PatientRun> }
+
+type Modifier = 'add_hba1c' | 'renal_caution' | 'transport_flag' | 'carer_flag' | 'interpreter_flag' | 'slots_late' | 'theatre_blocked'   // §5a
 ```
+
+## 5a. Cohort selection and record-driven modifiers
+
+File: `agent/preop/cohort.ts`. Runs at server start and on console Reset. Nothing here is hard-coded to a patient.
+
+1. Query the live world: `search_patients` with each of `elective`, `surgery`, `arthritis`, `knee`, `hip`, `MSK`, `orthopaedic`. Merge on id. Keep patients whose `conditions` contain `Awaiting elective surgery` or a joint, knee, hip, MSK or arthritis term, up to 40.
+2. For each kept patient call `buildPathway` (existing). Keep those with a `surgery`, `theatre-slot` or `referral` event, or the `Awaiting elective surgery` condition. This is the cohort. Its size is the board header number.
+3. Feature three or four by a fixed preference, first match wins per slot, no patient twice: (a) one currently blocked at `waiting` on a `theatre-slot` or `surgery` event; (b) one with a need in `Transport`, `Carer involvement`, `Offline contact` or `Interpreter`; (c) one with a condition matching `diabetes` or `CKD`; (d) one plain case with none of the above. If a slot has no match, take the next unfeatured cohort member.
+4. Console shows the featured cards first, the rest of the cohort as a list. Any of them can be started.
+
+Modifiers, derived once at Start from `needs` and `conditions`, stored on the run, rendered into agent state, and applied by the rules:
+
+| Trigger on the record | Modifier | Effect |
+|---|---|---|
+| condition matches `diabetes` | `add_hba1c` | bloods order adds `panelId: 'hba1c'`; skill explains why in one sentence |
+| condition matches `CKD` or `kidney` | `renal_caution` | `bloods_high_k` staff action becomes urgent to the anaesthetist as well as the nurse; U&E explanation mentions kidneys |
+| need `Transport` | `transport_flag` | transport item starts `pending` with detail "transport need on record"; agent offers the practice task on first contact instead of asking |
+| need `Carer involvement` | `carer_flag` | agent asks to include the carer in the plan and puts it in the transport item detail |
+| need `Interpreter` | `interpreter_flag` | agent keeps sentences shorter, states an interpreter is booked for the visit, creates a task for it; no language switch |
+| need `Offline contact` or `SMS preferred` | none | iMessage is the channel anyway; recorded on the card only |
+| need `Shift work` | `slots_late` | slot offers prefer the latest morning and latest afternoon sessions available |
+| pathway blocked at theatre | `theatre_blocked` | agent tells the patient their date is being confirmed by the hospital and does not promise a day; board detail shows the block |
+
+A modifier the record does not trigger is never applied. If a patient triggers nothing, the plain protocol runs.
 
 Readiness = count of items in `done` ÷ 5. Status derivation: `clinical_review` if any item is `review`; `ready` if all five `done`; `done` at step 4 with all `done`; `in_progress` if any transcript entry exists; else `not_contacted`.
 
@@ -151,13 +182,13 @@ Outcome sets, with default weights:
 | anaesthetic_questions | `anaesthetic_clear` | n/a | decided by conversation, not rolled |
 | anaesthetic_questions | `red_flag_raised` | n/a | decided by conversation, not rolled |
 
-Due steps: `bloods` and `ecg` become due one step after they are booked. `physio` is rolled at step 1 if the patient said they had started, otherwise re-asked. `transport` is answered in conversation. `anaesthetic_questions` is answered in conversation.
+Due steps: `bloods` and `ecg` become due one step after they are booked. `physio` is answered by conversation at step 0 (started or not); at every later step it is rolled from the table to show whether they kept it up, unless already `done`. `transport` is answered in conversation. `anaesthetic_questions` is answered in conversation.
 
-Bloods are ordered in the sim as two `order_test` actions (`panelId: 'fbc'` and `panelId: 'ue'`) at the moment the patient picks a slot. The sim generates its own values; they are not read. The rolled outcome carries the displayed values.
+Bloods are ordered in the sim as `order_test` actions (`panelId: 'fbc'` and `panelId: 'ue'`, plus `hba1c` under the `add_hba1c` modifier) at the moment the patient picks a slot. The sim generates its own values; they are not read. The rolled outcome carries the displayed values.
 
 ## 7. Rules table
 
-File: `agent/preop/rules.ts`. Pure function `classify(outcome: OutcomeCode, patient: PatientRun): Classification`. The model never decides whether a result is abnormal; this table does.
+File: `agent/preop/rules.ts`. Pure function `classify(outcome: OutcomeCode, patient: PatientRun): Classification`. It reads `patient.modifiers` (§5a) and nothing else about the patient. The model never decides whether a result is abnormal; this table does.
 
 ```ts
 interface Classification {
@@ -189,19 +220,19 @@ Red-flag detector: `detectRedFlag(text: string): string | null` in `rules.ts`, d
 
 File: `agent/preop/agent.ts`, registered on the existing `app` beside `pathway_agent`. Name `preop_agent`.
 
-State (typed via the ADK schema): `patientId`, `patientName`, `procedure`, `surgeryDate`, `daysToSurgery`, `checklist` (id, label, state, detail), `pendingEvent?` (a classification from §7), `escalated: boolean`, `needs[]`, `goals[]`.
+State (typed via the ADK schema): `patientId`, `patientName`, `procedureLabel`, `modifiers[]`, `surgeryDate`, `daysToSurgery`, `checklist` (id, label, state, detail), `pendingEvent?` (a classification from §7), `escalated: boolean`, `needs[]`, `goals[]`.
 
 Context, in order:
 
 1. System prompt (below).
-2. Skill file `agent/preop/skills/joint-replacement.md`, injected whole.
-3. State renderer: one paragraph with the patient, days to surgery, each checklist item and state, and the pending event if any.
+2. Skill file `agent/preop/skills/elective-preop.md`, injected whole.
+3. State renderer: one paragraph with the patient, procedure label, days to surgery, needs, conditions, active modifiers, each checklist item and state, and the pending event if any.
 4. History.
 
 System prompt:
 
 ```text
-You are the pre-operative coordinator for Northbank General, messaging one patient who is booked for a joint replacement. You write in NHS plain English: short sentences, sentence case, no jargon, no exclamation marks, no emojis, warm but not chatty. Under 80 words per message. One question per message. Address the patient by first name once at the start of the conversation.
+You are the pre-operative coordinator for Northbank General, messaging one patient who is booked for elective surgery. The procedure, surgery date, needs, conditions and modifiers in your state come from their real record; use them. You write in NHS plain English: short sentences, sentence case, no jargon, no exclamation marks, no emojis, warm but not chatty. Under 80 words per message. One question per message. Address the patient by first name once at the start of the conversation.
 
 Your job is to get the checklist in your state to done before the surgery date, by asking the patient what you need to know, booking what needs booking, and explaining results in the words the protocol gives you.
 
@@ -214,10 +245,10 @@ Rules you never break:
 - Work one checklist item per message, in the order the protocol gives. When every item is done, say so plainly, tell them what happens on the day, and stop.
 ```
 
-Skill file `joint-replacement.md`, sections in this order, plain Markdown, no front matter:
+Skill file `elective-preop.md`, sections in this order, plain Markdown, no front matter:
 
 1. **Checklist order and what done means.** physio → bloods → ecg → anaesthetic_questions → transport.
-2. **Physio.** What the exercises are for, in two sentences. The one question to ask. The one follow-up if not started.
+2. **Prehab and physio.** What the preparation exercises are for, in two sentences, worded for any elective operation with a joint-specific line when the procedure label mentions knee, hip or joint. The one question to ask. The one follow-up if not started.
 3. **Bloods.** Why FBC and U&E are needed before an anaesthetic. How to offer slots: two options, morning and afternoon, from real sessions. What to say when they pick.
 4. **ECG.** Why it is needed. Booked in the same visit as bloods where possible; state that.
 5. **Anaesthetic questions.** Exactly three, asked one per message: current medicines and any blood thinners; allergies or problems with a previous anaesthetic; any chest pain, breathlessness or fever since they were booked. The third is the red-flag question. Any yes to the third is a red flag.
@@ -225,6 +256,7 @@ Skill file `joint-replacement.md`, sections in this order, plain Markdown, no fr
 7. **Result explanations and responses.** Verbatim copy of the patient explanation column from §7, one heading per outcome code.
 8. **Safety net.** The verbatim escalation message from §7 and the rule that nothing else is asked afterwards.
 9. **What happens on the day.** Three sentences for the closing message when everything is done.
+10. **Modifiers.** One short paragraph per modifier in §5a saying exactly what changes in the conversation.
 
 Tools available to `preop_agent`:
 
@@ -261,11 +293,11 @@ All three are static files served by the existing server. No framework. Poll `GE
 - Home: a "Getting ready for your operation" card above "Needs your attention": surgery date, days to go, readiness bar, five pills.
 - Pathway page: the same card expanded, each item with its detail line; the record pane below it stays live from the sim.
 - Messages tab: renders the transcript from the store instead of the ADK chat when a pre-op run exists for the patient.
-- Ctrl+K palette reduced to the two demo patients.
+- Ctrl+K palette lists the cohort from `/api/demo/state`, featured first.
 
-**Clinician board, `board.html` (new).** One table: patient, procedure, surgery date, days to go, five checklist pills, readiness, status pill (Not contacted grey, In progress amber, Ready green, Clinical review red, Done blue), last contact. Row click opens the patient page. Header: "Booked for surgery in this world: N · not ready: M", where N is the count of patients matching `Awaiting elective surgery` from one `search_patients` call cached at Start and M is N minus the ready count in the store. Keep the NHS look of `pathway.css`.
+**Clinician board, `board.html` (new).** One table: patient, procedure, surgery date, days to go, five checklist pills, readiness, status pill (Not contacted grey, In progress amber, Ready green, Clinical review red, Done blue), last contact. Row click opens the patient page. Rows are the whole cohort from §5a, featured first; patients without a run show `Not contacted` with their record-derived detail. Header: "Booked for surgery in this world: N · not ready: M", where N is the cohort size and M is N minus the ready count in the store. Keep the NHS look of `pathway.css`.
 
-**Demo console, `console.html` (new).** Two patient cards with photo-less initials, a phone number field, Start, Reset. Timeline strip T-28 … T-0 with the current step highlighted, `-7` and `+7` buttons, the outcome picker per pending item, and a transcript pane per patient with a text box that sends a reply exactly as the bridge would. Voice toggle appears only if the voice lane passes its gate.
+**Demo console, `console.html` (new).** Featured patient cards with initials, procedure label, surgery date, needs, conditions and active modifiers, the rest of the cohort as a list, a phone number field, Start, Reset. Timeline strip T-28 … T-0 with the current step highlighted, `-7` and `+7` buttons, the outcome picker per pending item, and a transcript pane per patient with a text box that sends a reply exactly as the bridge would. Voice toggle appears only if the voice lane passes its gate.
 
 Endpoints added to `server.ts`:
 
@@ -298,11 +330,12 @@ Sim actions per checklist item:
 | Item | Sim action | Site |
 |---|---|---|
 | run start | `save_problem` "Pre-operative assessment in progress", active | gp |
-| bloods slot picked | `book_appointment` in a real session; `order_test` fbc; `order_test` ue | gp |
+| bloods slot picked | `book_appointment` in a real session; `order_test` fbc; `order_test` ue; `order_test` hba1c under `add_hba1c` | gp |
 | ecg | `create_task` "Book pre-op ECG at the phlebotomy visit" | gp |
 | result with staff action | `create_task` from §7, priority as given | gp |
 | escalation | `create_task` urgent, `save_problem` for the symptom | gp |
 | transport need | `create_task` "Arrange transport home after surgery" | gp |
+| interpreter need | `create_task` "Book interpreter for pre-op visit" | gp |
 
 Every write keeps the returned resource id on the item's `simRefs`. 409 handling is unchanged: never retried, the model offers an alternative.
 
@@ -313,11 +346,12 @@ Every write keeps the returned resource id on the item's `simRefs`. 409 handling
 - `rules.test.ts`: every outcome code maps to the expected severity, item state and allowed actions; the red-flag detector hits each phrase and misses "no chest pain".
 - `timeline.test.ts`: `+7` pushes a snapshot and rolls only due items; `-7` restores the previous state exactly; `+7, -7, +7` with a fixed pick yields the picked outcome; the sim advance is called once per forward step and never on rewind (sim mocked).
 - `store.test.ts`: readiness and status derivation for each combination in §5.
-- `skill.test.ts`: the skill file contains a heading for every outcome code in the rules table and the verbatim safety-net line.
+- `skill.test.ts`: the skill file contains a heading for every outcome code in the rules table, every modifier in §5a, and the verbatim safety-net line.
+- `cohort.test.ts`: against a fixture of sim patients and pathways, the cohort filter keeps the right ids, the featured slots fill by the stated preference with no duplicates, and each modifier fires only on its trigger.
 
 ADK evals with the model, one scenario each, run before freeze:
 
-1. Happy path: start → physio yes → picks a slot → book and two orders happen only after the reply → everything done by step 3 → closing message.
+1. Happy path on a plain patient: start → physio yes → picks a slot → book and two orders happen only after the reply → everything done by step 3 → closing message.
 2. Low haemoglobin at step 2: explanation matches the table, `order_test` and `create_task` called, no other write, surgery date unchanged in the message.
 3. High potassium: `create_task` urgent, patient told a nurse calls today, readiness holds.
 4. New AF: anaesthetist task, explanation matches.
@@ -325,6 +359,7 @@ ADK evals with the model, one scenario each, run before freeze:
 6. Red flag in a reply: safety-net message verbatim, `create_task` urgent, no further question in that or any later turn, no other write after.
 7. Declined slot: agent offers an alternative and does not retry the same slot.
 8. Turn budget: ninth message is the pick-up-next-week line.
+9. Modifiers: a diabetic patient gets the HbA1c added to the order and one sentence why; a patient with a transport need is offered the task on first contact and not asked; a theatre-blocked patient is never given a surgery day.
 
 Each eval asserts: message under 80 words, at most one question mark, write calls only from the allowed list for the event.
 
@@ -333,15 +368,15 @@ Each eval asserts: message under 80 words, at most one question mark, write call
 | Track | Owner | Deliverable | Done by |
 |---|---|---|---|
 | Gates | Aaryan | iMessage round trip to own phone; API key request sent; `13health-stall` world created | 14:45 |
-| T1 store + timeline + rules + board | dev agent 1 | `store.ts`, `timeline.ts`, `rules.ts`, `board.html`, `/api/demo/*`, `/api/board`, unit tests | 15:45 |
-| T2 agent + skill + bridge | dev agent 2 | `preop/agent.ts`, `preop/tools.ts`, `skills/joint-replacement.md`, `imessage.ts`, evals 1–8 | 15:45 |
+| T1 cohort + store + timeline + rules + board | dev agent 1 | `cohort.ts`, `store.ts`, `timeline.ts`, `rules.ts`, `board.html`, `/api/demo/*`, `/api/board`, unit tests | 15:45 |
+| T2 agent + skill + bridge | dev agent 2 | `preop/agent.ts`, `preop/tools.ts`, `skills/elective-preop.md`, `imessage.ts`, evals 1–9 | 15:45 |
 | T3 patient app + console | dev agent 3 | `pathway.html` additions, `console.html` | 15:45 |
 | T4 voice | dev agent 4 | `handset.html`, Continuity relay; stops at the 15:30 gate | 15:30 |
 | Clinical check | clinician on the team | rules table and skill file rows initialled | 16:00 |
 | Integration run | Aaryan + presenter | full §2 script end to end, iMessage to a real phone | 16:00 |
 | Freeze | named human with veto | video and repo frozen; backup recording of the script | 16:30 |
 
-Interface contracts between tracks, fixed now so they can run in parallel: the `DemoState` shape in §5, the endpoint table in §10, the `Classification` shape in §7, and the skill file section order in §8. A track that needs to change one of these posts the change in the team channel before making it.
+Interface contracts between tracks, fixed now so they can run in parallel: the `DemoState` shape in §5, the `Modifier` set in §5a, the endpoint table in §10, the `Classification` shape in §7, and the skill file section order in §8. A track that needs to change one of these posts the change in the team channel before making it.
 
 ## 15. Open items
 
