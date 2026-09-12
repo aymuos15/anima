@@ -47,15 +47,16 @@ function render() {
 }
 async function speak(index, turn) {
   busy = true; mic(); status('Pre-op team speaking…');
+  console.info('[voice] approved speech requested', index);
   const response = await api('/api/demo/voice/speak', {patientId:activePatient,transcriptIndex:index});
   const blob = await response.blob();
   if (!connected || turn !== generation) return;
   if (audioUrl) URL.revokeObjectURL(audioUrl);
   audioUrl = URL.createObjectURL(blob); $('speech').src = audioUrl;
   await new Promise((resolve,reject) => {
-    $('speech').onended = resolve;
+    $('speech').onended = event => { console.info(event ? '[voice] approved speech ended' : '[voice] speech cancelled', index, $('speech').currentTime); resolve(); };
     $('speech').onerror = () => reject(new Error('Audio playback failed'));
-    $('speech').play().catch(reject);
+    $('speech').play().then(() => console.info('[voice] approved speech playing', index)).catch(reject);
   });
 }
 async function refresh(speakNew = true) {
@@ -80,9 +81,11 @@ async function refresh(speakNew = true) {
 }
 async function inbound(text) {
   if (!text.trim() || !connected || busy) return;
+  console.info('[voice] microphone transcription received');
   busy = true; mic(); status('Pre-op team is checking…');
   try {
     await api('/api/demo/reply', {patientId:activePatient,text});
+    console.info('[voice] server accepted microphone reply');
     busy = false; await refresh(); mic();
   } catch (error) { end(); status(error.message); }
 }
@@ -103,7 +106,11 @@ $('answer').onclick = async () => {
     activePatient = $('patient').value;
     if (!state.patients[activePatient]?.transcript.length) throw new Error('Start this patient in the demo console first.');
     activeRun = state.runId; generation++; muted = false;
+    console.info('[voice] requesting microphone');
+    status('Allow microphone access in your browser…');
     stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    console.info('[voice] microphone acquired', JSON.stringify(stream.getAudioTracks().map(track => ({label:track.label,readyState:track.readyState}))));
+    status('Connecting audio…');
     stream.getAudioTracks().forEach(track => track.enabled = false);
     peer = new RTCPeerConnection();
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
@@ -115,15 +122,17 @@ $('answer').onclick = async () => {
       if (data.type === 'error') { console.error('[voice]', data.error?.type); end(); status('Audio connection error. Please reconnect.'); }
     };
     channel.onopen = async () => {
+      console.info('[voice] data channel open');
       connected = true; $('answer').hidden = true; $('end').hidden = $('mute').hidden = false; $('patient').disabled = true;
       $('callLabel').textContent = 'Browser voice · Connected';
       const entries = state.patients[activePatient].transcript;
       cursor = entries.findLastIndex(entry => entry.from === 'agent'); if (cursor < 0) cursor = entries.length;
       await refresh();
     };
-    peer.onconnectionstatechange = () => { if (['failed','disconnected'].includes(peer.connectionState)) { end(); status('Audio disconnected. Please reconnect.'); } };
+    peer.onconnectionstatechange = () => { console.info('[voice] peer connection', peer.connectionState); if (['failed','disconnected'].includes(peer.connectionState)) { end(); status('Audio disconnected. Please reconnect.'); } };
     const offer = await peer.createOffer(); await peer.setLocalDescription(offer);
     const response = await api('/api/demo/voice/connect', {patientId:activePatient,sdp:offer.sdp});
+    console.info('[voice] SDP answer received', response.status);
     await peer.setRemoteDescription({type:'answer',sdp:await response.text()});
   } catch (error) { end(); status(error.message); }
 };
