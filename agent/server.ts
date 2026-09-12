@@ -90,7 +90,13 @@ async function demoStart(patientId: string, phone?: string) {
   if (phone) p.phone = phone
   savePatient(p); conversations.delete(patientId)
   const prefix = p.modifiers.includes('theatre_blocked') ? 'The hospital is confirming your operation date. ' : ''
-  await say(p, `Hello ${p.name.split(' ')[0]}, I am coordinating your surgery preparation. ${prefix}Has someone shown you the physiotherapy exercises to do before your operation?`)
+  const c = conversation(p)
+  const lateStart = getState().step > 0
+  if (lateStart) { c.stage = 'red_flag'; c.earlySafetyCheck = 'pending' }
+  const question = lateStart ? 'Have you had any chest pain, breathlessness or fever since you were booked?' : 'Has someone shown you the physiotherapy exercises to do before your operation?'
+  if (await say(p, `Hello ${p.name.split(' ')[0]}, I am coordinating your surgery preparation. ${prefix}${question}`)) {
+    if (lateStart) c.pendingQuestion = 'anaesthetic_red_flag'
+  }
   const current = getState().patients[patientId]
   const coded = await sim.action('gp', { type: 'save_problem', patientId, title: 'Pre-operative assessment in progress', problemStatus: 'active' })
   retainRefs(current, 'physio', coded); savePatient(current)
@@ -208,12 +214,25 @@ async function handleDemoReply(patientId: string, text: string) {
     c.stage = 'medicines'; await say(p, 'Your blood tests and heart tracing visit are arranged. What medicines do you take, including any blood thinners?', text); return
   }
   if (c.stage === 'medicines') { item('anaesthetic_questions').detail = `Medicines: ${text}`; savePatient(p); c.stage = 'allergies'; await say(p, 'Do you have any allergies or have you had problems with a previous anaesthetic?', text); return }
-  if (c.stage === 'allergies') { item('anaesthetic_questions').detail += `; allergies/previous anaesthetic: ${text}`; savePatient(p); c.stage = 'red_flag'; if (await say(p, 'Have you had any chest pain, breathlessness or fever since you were booked?', text)) c.pendingQuestion = 'anaesthetic_red_flag'; return }
+  if (c.stage === 'allergies') {
+    item('anaesthetic_questions').detail += `; allergies/previous anaesthetic: ${text}`; savePatient(p)
+    if (c.earlySafetyCheck === 'clear') { await completeAnaestheticQuestions(); return }
+    c.stage = 'red_flag'; if (await say(p, 'Have you had any chest pain, breathlessness or fever since you were booked?', text)) c.pendingQuestion = 'anaesthetic_red_flag'; return
+  }
   if (c.stage === 'red_flag') {
     if (answer !== 'no' && !/^(none|no symptoms|not at all)$/i.test(text.trim())) { await say(p, 'Please answer yes or no. Have you had any chest pain, breathlessness or fever since you were booked?', text); return }
-    c.pendingQuestion = undefined; settle('anaesthetic_questions', 'done', item('anaesthetic_questions').detail + '; no new red-flag symptoms'); c.stage = 'transport'
+    c.pendingQuestion = undefined
+    if (c.earlySafetyCheck === 'pending') {
+      c.earlySafetyCheck = 'clear'; c.stage = 'physio'
+      settle('anaesthetic_questions', 'pending', 'No new red-flag symptoms; medicines and allergies/previous anaesthetic still to check')
+      await say(p, 'Has someone shown you the physiotherapy exercises to do before your operation?', text); return
+    }
+    await completeAnaestheticQuestions(); return
+  }
+  async function completeAnaestheticQuestions() {
+    settle('anaesthetic_questions', 'done', item('anaesthetic_questions').detail + '; no new red-flag symptoms'); c.stage = 'transport'
     const support = [p.modifiers.includes('transport_flag') && 'arrange transport', p.modifiers.includes('carer_flag') && 'include your carer in the plan', p.modifiers.includes('interpreter_flag') && 'book an interpreter for your visit'].filter(Boolean)
-    await say(p, support.length ? `The practice can help with your recorded support needs. Shall I ask them to ${support.join(' and ')}?` : 'Is there someone to take you home and stay the first night?', text); return
+    await say(p, support.length ? `The practice can help with your recorded support needs. Shall I ask them to ${support.join(' and ')}?` : 'Is there someone to take you home and stay the first night?', text)
   }
   if (c.stage === 'transport') {
     if (answer === 'ambiguous') { await say(p, c.lastText, text); return }

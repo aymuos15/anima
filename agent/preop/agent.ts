@@ -31,6 +31,7 @@ export interface Conversation {
   paused: boolean
   escalated: boolean
   pendingQuestion?: 'anaesthetic_red_flag'
+  earlySafetyCheck?: 'pending' | 'clear'
   slots: Slot[]
   lastText: string
   supportTask?: boolean

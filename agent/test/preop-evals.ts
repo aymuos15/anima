@@ -1,4 +1,4 @@
-// Nine real ADK conversation scenarios with captured simulator writes; no external patient sends.
+// Eleven real ADK conversation scenarios with captured simulator writes; no external patient sends.
 import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
 import { sim, type Patient } from '../sim.js'
@@ -6,18 +6,19 @@ const mock = process.argv.includes('--mock')
 process.env.PORT = '8792'; process.env.PREOP_MODEL_OFF = mock ? '1' : '0'
 const file = new URL('../demo-state.json', import.meta.url), prior = existsSync(file) ? readFileSync(file) : undefined
 const writes: any[] = [], resources: any[] = [], now = Date.UTC(2026, 8, 12, 7)
+let appointmentReads = 0, startAppointmentReads = 0, emptySlots = false
 let active = 0, modelTurns = 0, successfulModelResponses = 0
 const turnEvidence: any[] = []
 const originalFetch = globalThis.fetch
 globalThis.fetch = (async (input: any, init: any) => { const model = String(input instanceof Request ? input.url : input).includes('/responses'); if (model) modelTurns++; const response = await originalFetch(input, init); if (model && response.ok) successfulModelResponses++; return response }) as typeof fetch
-const people: Patient[] = Array.from({ length: 9 }, (_, i) => ({ id: `EVAL-${i + 1}`, name: `Eval Patient${i + 1}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i === 8 ? ['Diabetes', 'CKD'] : [])], needs: i === 8 ? ['Transport'] : [], goals: [], localIds: {} }))
+const people: Patient[] = Array.from({ length: 11 }, (_, i) => ({ id: `EVAL-${i + 1}`, name: `Eval Patient${i + 1}`, birthDate: '1970-01-01', conditions: ['Awaiting elective surgery', ...(i === 8 ? ['Diabetes', 'CKD'] : [])], needs: i === 8 ? ['Transport'] : [], goals: [], localIds: {} }))
 sim.clock = async () => ({ now, paused: true })
 sim.patients = async q => ({ total: people.length, items: q.startsWith('EVAL-') ? people.filter(p => p.id === q) : people })
 sim.view = async (_site, patient) => ({ now, resources: [{ id: 'surgery-' + patient, patientId: patient, kind: patient === 'EVAL-9' ? 'theatre-slot' : 'surgery', title: 'Elective knee surgery', status: patient === 'EVAL-9' ? 'waiting' : 'booked', createdAt: now, dueAt: now + 28 * 86400000 }, ...resources.filter(r => r.patientId === patient)] })
-sim.get = async () => ({ appointments: resources.filter(r => r.kind === 'appointment'), sessions: ['AM', 'PM'].map((period, i) => ({ id: `session-${active}-${period}`, title: `Practice nurse ${period}`, status: 'open', version: 1, data: { mode: 'in-person', startsAt: now + (i ? 7 : 2) * 3600000, endsAt: now + (i ? 9 : 4) * 3600000, slotMinutes: 15 } })) })
+sim.get = async () => { appointmentReads++; return ({ appointments: resources.filter(r => r.kind === 'appointment'), sessions: (emptySlots ? [] : ['AM', 'PM']).map((period, i) => ({ id: `session-${active}-${period}`, title: `Practice nurse ${period}`, status: 'open', version: 1, data: { mode: 'in-person', startsAt: now + (i ? 7 : 2) * 3600000, endsAt: now + (i ? 9 : 4) * 3600000, slotMinutes: 15 } })) }) }
 sim.action = async (site, action) => { const evidence = { ...action, site, returnedResource: undefined as any }; writes.push(evidence); const r = { ...action, id: `written-${writes.length}`, kind: action.type === 'book_appointment' ? 'appointment' : action.type === 'order_test' ? 'blood-test-order' : action.type === 'save_problem' ? 'problem' : 'task', owner: 'gp', data: action, createdAt: now }; resources.push(r); evidence.returnedResource = r; return { resource: r } }
 sim.advance = async () => ({})
-const { resetState, getState, savePatient, readiness } = await import('../preop/store.js')
+const { resetState, getState, saveState, savePatient, readiness } = await import('../preop/store.js')
 const { loadCohort } = await import('../preop/cohort.js')
 const { classify, BLOODS_FOLLOWUP } = await import('../preop/rules.js')
 const { conversations, conversation, lintOutbound, PICKUP, CLOSING } = await import('../preop/agent.js')
@@ -43,10 +44,12 @@ const reply = (text: string, allowed: string[] = []) => api('/api/demo/reply', {
 const run = () => getState().patients[`EVAL-${active}`]
 const last = () => run().transcript.filter(m => m.from === 'agent').at(-1)!.text
 const results: any[] = []
-async function scenario(number: number, name: string, fn: () => Promise<void>) {
+async function scenario(number: number, name: string, fn: () => Promise<void>, startStep = 0) {
   active = number; const beforeWrites = writes.length, beforeModels = modelTurns, beforeSuccess = successfulModelResponses, beforeTurns = turnEvidence.length
   try {
     resetState(`eval-${number}`, await loadCohort()); conversations.clear()
+    if (startStep) saveState({ ...getState(), step: startStep })
+    startAppointmentReads = appointmentReads; emptySlots = number === 10
     await api('/api/demo/start', { patientId: `EVAL-${active}` }, ['save_problem']); assert.ok(run().sessionId, 'persisted ADK session required')
     await fn()
     for (const m of run().transcript) if (m.from === 'agent') lintOutbound(m.text)
@@ -194,4 +197,49 @@ try {
     await reply('no')
     for (const m of run().transcript.filter(m => m.from === 'agent')) assert.ok(!/(?:operation|surgery|theatre).{0,35}(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|\d{1,2}[ /-]\d{1,2}|\d{1,2} (?:January|February|March|April|May|June|July|August|September|October|November|December))/i.test(m.text), 'Blocked theatre date must never be promised')
   })
-} finally { if(prior)writeFileSync(file,prior);else if(existsSync(file))unlinkSync(file);process.exit(results.length===9 && results.every(r=>r.pass)?0:1) }
+  await scenario(10, 'late start reaches deterministic urgent handover without calendar capacity', async () => {
+    assert.match(last(), /chest pain, breathlessness or fever/)
+    assert.equal(conversation(run()).pendingQuestion, 'anaesthetic_red_flag')
+    assert.equal(appointmentReads, startAppointmentReads, 'Late-start question must precede any appointment lookup')
+    assert.notEqual(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'done')
+    const reads = appointmentReads, before = writes.length, models = modelTurns
+    process.env.PREOP_MODEL_OFF = '1'
+    await reply('yes', ['create_task'])
+    assert.equal(modelTurns, models, 'Urgent branch must not invoke the model')
+    assert.equal(appointmentReads, reads, 'Urgent branch must not query appointments')
+    assert.equal(last(), classify('red_flag_raised', run()).patientExplanation)
+    assert.equal(run().status, 'clinical_review')
+    assert.equal(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'review')
+    assert.deepEqual(writes.slice(before).map(w => [w.type, w.title]), [['create_task', 'URGENT · preop_nurse: Patient reports symptom affirmed in anaesthetic red-flag question during pre-op contact; clinical review today.']])
+    const count = run().transcript.filter(m => m.from === 'agent').length
+    await reply('yes'); await reply('Please book option 1')
+    await api('/api/demo/step', { direction: 1 })
+    assert.equal(writes.length, before + 1)
+    assert.equal(appointmentReads, reads)
+    assert.equal(run().transcript.filter(m => m.from === 'agent').length, count)
+    emptySlots = false
+    process.env.PREOP_MODEL_OFF = mock ? '1' : '0'
+  }, 1)
+  await scenario(11, 'late-start negative safety answer preserves every remaining preparation question', async () => {
+    assert.match(last(), /chest pain, breathlessness or fever/)
+    await reply('no'); assert.match(last(), /Has someone shown you/)
+    assert.equal(conversation(run()).pendingQuestion, undefined)
+    assert.notEqual(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'done')
+    await reply('yes'); assert.match(last(), /How are you getting on/)
+    await reply('Going well'); assert.equal(conversation(run()).stage, 'slot')
+    await reply('1', ['book_appointment', 'create_task', 'order_test'])
+    assert.match(last(), /What medicines/)
+    assert.notEqual(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'done')
+    await reply('Paracetamol'); assert.match(last(), /allergies/)
+    assert.notEqual(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'done')
+    await reply('No allergies'); assert.match(last(), /take you home/)
+    assert.equal(run().checklist.find(i => i.id === 'anaesthetic_questions')!.state, 'done')
+    await reply('yes')
+    assert.equal(conversation(run()).stage, 'waiting_results')
+    assert.equal(conversation(run()).turns, 8)
+    assert.equal(conversation(run()).paused, false)
+    assert.equal(run().transcript.filter(m => m.from === 'agent' && /chest pain, breathlessness or fever/.test(m.text)).length, 1)
+    assert.notEqual(run().status, 'ready', 'Pending test results must not turn the patient green')
+    assert.match(run().checklist.find(i => i.id === 'anaesthetic_questions')!.detail!, /Medicines: Paracetamol; allergies\/previous anaesthetic: No allergies; no new red-flag symptoms/)
+  }, 1)
+} finally { if(prior)writeFileSync(file,prior);else if(existsSync(file))unlinkSync(file);process.exit(results.length===11 && results.every(r=>r.pass)?0:1) }
