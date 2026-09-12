@@ -186,12 +186,17 @@
     var days = Math.ceil((Date.parse(run.surgeryDate) - now) / 86400000);
     return Number.isFinite(days) && days >= 0 ? ' · ' + days + ' days to go' : '';
   }
+  function confirmedSurgeryDate(run, record) {
+    if (!record || run.modifiers.includes('theatre_blocked')) return null;
+    var booking = record.events.find(function (event) { return ['surgery', 'theatre-slot'].includes(event.kind) && ['booked', 'confirmed'].includes(event.status) && Number.isFinite(event.dueAt); });
+    return booking ? booking.dueAt : null;
+  }
   function renderPreop() {
     var run = preopRun();
     if (!run) { $('preop-home').innerHTML = ''; $('preop-pathway').innerHTML = ''; return; }
     var done = run.checklist.filter(function (i) { return i.state === 'done'; }).length;
-    var blocked = run.modifiers.includes('theatre_blocked');
-    var heading = '<section class="card preop-card"><h2>Getting ready for your operation</h2><p>' + esc(run.procedureLabel) + '</p><p class="caption">' + (blocked ? 'Your hospital is confirming your operation date.' : esc(fmt(run.surgeryDate)) + surgeryCountdown(run, pathway && pathway.now)) + '</p>';
+    var surgeryDate = confirmedSurgeryDate(run, pathway);
+    var heading = '<section class="card preop-card"><h2>Getting ready for your operation</h2><p>' + esc(run.procedureLabel) + '</p><p class="caption">' + (surgeryDate === null ? 'Your hospital is confirming your operation date.' : esc(fmt(surgeryDate)) + surgeryCountdown({surgeryDate: new Date(surgeryDate).toISOString()}, pathway.now)) + '</p>';
     var progress = '<div class="readiness-summary"><strong>' + (run.status === 'clinical_review' ? 'Clinical review needed' : done === 5 ? 'Ready for theatre' : 'Your preparation') + '</strong><span>' + done + ' of 5 complete</span></div><div class="readiness-track" role="progressbar" aria-label="Surgery preparation" aria-valuemin="0" aria-valuemax="5" aria-valuenow="' + done + '"><span style="width:' + done * 20 + '%"></span></div>';
     var pills = '<div class="checklist-pills">' + run.checklist.map(function (i) { return '<span class="tag tag--' + itemColours[i.state] + '">' + (i.state === 'done' ? '✓ ' : '') + esc(i.label) + ' · ' + itemStates[i.state] + '</span>'; }).join('') + '</div>';
     $('preop-home').innerHTML = heading + progress + pills + '</section>';

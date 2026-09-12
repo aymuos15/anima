@@ -16,3 +16,13 @@ test('countdown uses the actual operation date and simulation clock for late sta
  assert.equal(runInNewContext(`${source};surgeryCountdown(run, now)`,context),' · 28 days to go')
  assert.equal(runInNewContext(`${source};surgeryCountdown(run, undefined)`,context),'')
 })
+test('unconfirmed fallback dates and waiting theatre slots never become operation promises',()=>{
+ const source=html.match(/  function confirmedSurgeryDate\(run, record\) \{[\s\S]*?\n  \}/)?.[0] || ''
+ const run={surgeryDate:'2026-10-17',modifiers:[]}
+ const value=(record:unknown)=>runInNewContext(`${source};confirmedSurgeryDate(run,record)`,{run,record})
+ assert.equal(value({events:[]}),null)
+ assert.equal(value({events:[{kind:'theatre-slot',status:'waiting',dueAt:123}]}),null)
+ assert.equal(value({events:[{kind:'surgery',status:'booked',dueAt:123}]}),123)
+ run.modifiers.push('theatre_blocked' as never)
+ assert.equal(value({events:[{kind:'surgery',status:'booked',dueAt:123}]}),null)
+})
