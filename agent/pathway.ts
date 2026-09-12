@@ -44,6 +44,33 @@ export interface Medicines {
   blockers: string[]
 }
 
+export interface Letter {
+  id: string
+  site: Site
+  kind: string
+  title: string
+  status: string
+  createdAt: number
+  sentAt?: number
+  sentBy?: string
+  sections: Array<{ key: string; label: string; text: string }>
+  text?: string
+}
+
+export interface RepeatMedicine {
+  term: string
+  route?: string
+  indication?: string
+  issueDate?: string
+  reviewDate?: string
+  supplyStatus: string
+  prescriptionType?: string
+  isCurrent: boolean
+  note?: string
+  source: 'gp-record' | 'prescription'
+  id?: string
+}
+
 export interface Pathway {
   patient: Patient | null
   now: number
@@ -53,7 +80,52 @@ export interface Pathway {
   events: PathwayEvent[]
   capacity: Array<{ site: Site; title: string; total?: number; remaining?: number }>
   medicines: Medicines
+  letters: Letter[]
+  repeats: RepeatMedicine[]
   errors: string[]
+}
+
+const LETTER_KINDS = new Set(['discharge-summary', 'document'])
+const SECTION_LABELS: Record<string, string> = {
+  reason: 'Why you were seen', diagnoses: 'Diagnoses', course: 'What happened', results: 'Results',
+  medicationChanges: 'Changes to your medicines', followUp: 'Follow-up', gpActions: 'For your GP practice',
+}
+
+function buildLetters(raw: Array<{ site: Site; r: Resource }>): Letter[] {
+  const seen = new Set<string>()
+  const out: Letter[] = []
+  for (const { site, r } of raw) {
+    if (!LETTER_KINDS.has(r.kind) || seen.has(r.id)) continue
+    seen.add(r.id)
+    const d = r.data ?? {}
+    const secs = (d.sections && typeof d.sections === 'object' ? d.sections : {}) as Record<string, unknown>
+    const sections = Object.keys(SECTION_LABELS)
+      .filter((k) => typeof secs[k] === 'string' && (secs[k] as string).trim())
+      .map((k) => ({ key: k, label: SECTION_LABELS[k], text: secs[k] as string }))
+    out.push({
+      id: r.id, site, kind: r.kind, title: r.title, status: r.status, createdAt: r.createdAt,
+      sentAt: num(d.sentAt), sentBy: typeof d.sentBy === 'string' && d.sentBy ? d.sentBy : undefined,
+      sections, text: typeof d.text === 'string' ? d.text : undefined,
+    })
+  }
+  return out.sort((a, b) => (b.sentAt ?? b.createdAt) - (a.sentAt ?? a.createdAt))
+}
+
+function buildRepeats(ehr: Resource | undefined, medicines: Medicines): RepeatMedicine[] {
+  const out: RepeatMedicine[] = []
+  const meds = Array.isArray(ehr?.data?.medications) ? (ehr!.data!.medications as Array<Record<string, unknown>>) : []
+  for (const m of meds) {
+    if (typeof m.term !== 'string') continue
+    const str = (k: string) => (typeof m[k] === 'string' ? (m[k] as string) : undefined)
+    out.push({
+      term: m.term, route: str('route'), indication: str('indication'), issueDate: str('issueDate'), reviewDate: str('reviewDate'),
+      supplyStatus: str('supplyStatus') ?? 'unknown', prescriptionType: str('prescriptionType'), isCurrent: m.isCurrent !== false, note: str('note'), source: 'gp-record',
+    })
+  }
+  for (const p of medicines.prescriptions) {
+    out.push({ term: p.drug, supplyStatus: p.status, isCurrent: p.status !== 'collected', source: 'prescription', id: p.id, prescriptionType: 'acute' })
+  }
+  return out.sort((a, b) => Number(b.isCurrent) - Number(a.isCurrent))
 }
 
 const RX_ORDER = ['draft', 'reviewed', 'approved', 'dispensed', 'collected']
@@ -127,6 +199,7 @@ async function fetchPathway(patientId: string): Promise<Pathway> {
   const events: PathwayEvent[] = []
   const capacity: Pathway['capacity'] = []
   const raw: Array<{ site: Site; r: Resource }> = []
+  let ehr: Resource | undefined
   let now = 0
 
   for (const entry of views) {
@@ -138,7 +211,9 @@ async function fetchPathway(patientId: string): Promise<Pathway> {
         continue
       }
       if (r.kind === 'bed' && r.status === 'occupied' && entry.site === 'hospital') raw.push({ site: entry.site, r: { ...r, patientId } })
-      if (r.patientId !== patientId || NOISE.has(r.kind)) continue
+      if (r.patientId !== patientId) continue
+      if (r.kind === 'ehr-record' && entry.site === 'gp') ehr = r
+      if (NOISE.has(r.kind)) continue
       raw.push({ site: entry.site, r })
       events.push({
         site: entry.site, id: r.id, kind: r.kind, status: r.status, title: r.title, priority: r.priority,
@@ -166,7 +241,9 @@ async function fetchPathway(patientId: string): Promise<Pathway> {
   for (const c of capacity) if (c.remaining === 0) blockers.push(`No capacity: ${c.title} (${c.site})`)
 
   const medicines = buildMedicines(unique, raw, capacity)
-  return { patient, now, currentStage: current, stagesReached: reached, blockers, events: unique, capacity, medicines, errors }
+  const letters = buildLetters(raw)
+  const repeats = buildRepeats(ehr, medicines)
+  return { patient, now, currentStage: current, stagesReached: reached, blockers, events: unique, capacity, medicines, letters, repeats, errors }
 }
 
 function num(v: unknown): number | undefined { return typeof v === 'number' ? v : undefined }
