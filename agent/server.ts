@@ -6,20 +6,25 @@ import { app } from './app.js'
 import { pathwayAgent, adminAgent, auditHook, MODEL_NAME } from './agents.js'
 import { buildPathway, fmtDate, invalidatePathways } from './pathway.js'
 
-// warm the cache for the featured patients so the console opens instantly
+import { sim } from './sim.js'
+import { overview, readJson, FEATURED } from './tools/admin.js'
+
+const here = dirname(fileURLToPath(import.meta.url))
+const PUBLIC = join(here, '..', 'public')
+const PORT = Number(process.env.PORT ?? 8790)
+const SERVERLESS = process.env.NETLIFY === 'true' || Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME)
+
+// Long-running process only: warm the cache for the featured patients so the console opens instantly.
+// In a serverless function there is no background time, so requests fetch on demand.
 function prefetch() {
   let i = 0
   const next = (): Promise<void> => i < FEATURED.length ? buildPathway(FEATURED[i++]).catch(() => undefined).then(next) : Promise.resolve()
   next(); next()
 }
-setTimeout(prefetch, 500)
-setInterval(prefetch, 80000)
-import { sim } from './sim.js'
-import { overview, readJson, FEATURED } from './tools/admin.js'
-
-const here = dirname(fileURLToPath(import.meta.url))
-const ROOT = join(here, '..')
-const PORT = Number(process.env.PORT ?? 8790)
+if (!SERVERLESS) {
+  setTimeout(prefetch, 500)
+  setInterval(prefetch, 80000).unref()
+}
 
 const chat = app.handler.rest({ agent: pathwayAgent, hooks: [auditHook as any], response: { state: true } })
 const adminChat = app.handler.rest({ agent: adminAgent, hooks: [auditHook as any] })
@@ -110,16 +115,16 @@ export const server = createServer(async (req, res) => {
       const body = await readBody(req)
       const r = await sim.advance(Number(body.minutes ?? 60))
       invalidatePathways()
-      prefetch()
+      if (!SERVERLESS) prefetch()
       json(res, 200, r)
       return
     }
 
-    // static files from the project root
-    const file = url.pathname === '/' ? '/pathway.html' : url.pathname
-    if (file.includes('..') || file === '/key.txt') { res.writeHead(404).end(); return }
+    // static files from public/ (local development only; Netlify serves public/ from its CDN)
+    const file = url.pathname === '/' ? '/index.html' : url.pathname === '/admin' ? '/admin.html' : url.pathname
+    if (file.includes('..')) { res.writeHead(404).end(); return }
     try {
-      const data = await readFile(join(ROOT, file))
+      const data = await readFile(join(PUBLIC, file))
       res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(data)
     } catch {
       res.writeHead(404).end('not found')
@@ -130,6 +135,6 @@ export const server = createServer(async (req, res) => {
   }
 })
 
-if (process.env.NETLIFY !== 'true') {
+if (!SERVERLESS) {
   server.listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${MODEL_NAME} via ${process.env.MODEL_PROVIDER ?? 'auto'} ${process.env.OPENAI_BASE_URL ?? ''})`))
 }

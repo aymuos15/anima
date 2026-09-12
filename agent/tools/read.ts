@@ -1,10 +1,8 @@
 import { z } from 'zod'
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
 import type { app as App } from '../app.js'
 import { sim, SITES } from '../sim.js'
 import { buildPathway, fmtDate } from '../pathway.js'
+import { readJson } from './admin.js'
 
 const siteSchema = z.enum(SITES)
 
@@ -93,8 +91,4 @@ export function readTools(app: typeof App) {
   return [search_patients, get_patient_pathway, get_capacity, get_appointment_sessions, get_resource, get_similar_pathways]
 }
 
-let cohortCache: any
-function loadCohort() {
-  if (!cohortCache) cohortCache = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'cohort.json'), 'utf8'))
-  return cohortCache
-}
+function loadCohort(): any { return readJson('cohort.json') }

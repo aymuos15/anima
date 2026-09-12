@@ -1,19 +1,15 @@
 import { z } from 'zod'
-import { existsSync, readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
 import type { app as App } from '../app.js'
 import { sim, SITES } from '../sim.js'
 import { buildPathway, fmtDate, invalidatePathways } from '../pathway.js'
-
-const here = dirname(fileURLToPath(import.meta.url))
-const dataDir = join(here, '..', 'data')
+import cohortData from '../data/cohort.json' with { type: 'json' }
+import examplesData from '../data/examples.json' with { type: 'json' }
 
 export const FEATURED = ['SIM-000007', 'SIM-000504', 'SIM-000023', 'SIM-000002', 'SIM-000070', 'SIM-000001']
 
-export function readJson(name: string): any {
-  const p = join(dataDir, name)
-  return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null
+// Data files are imported so they are bundled into the serverless function (no filesystem reads at runtime).
+export function readJson(name: 'cohort.json' | 'examples.json'): any {
+  return name === 'cohort.json' ? cohortData : examplesData
 }
 
 export async function overview() {
