@@ -16,7 +16,12 @@
 
 - One neighbourhood per world, fixed: Riverside Practice (gp), Northbank General (hospital), Riverside Community Services (community), Riverside Pharmacy (pharmacy). No endpoint adds sites, organisations, staff or capacity.
 - `POST /api/keys {"teamName":"..."}` creates or joins a world. Same name returns the same world and key. Use a new name for a clean run.
-- Worlds in use: `13health` (main, already ~25 sim hours in), `13health-scratch409` (throwaway for API checks).
+- Worlds in use: `13health` (main, already ~25 sim hours in), `13health-scratch409` (throwaway for API checks), `13health-agent` (agent writes; key in `agent/key-agent.txt`).
+
+# Agent
+
+- `agent/` is the Anima ADK backend that drives `pathway.html`; see `ADK-INTEGRATION.md` for architecture, model route and how to run it.
+- Run: `npm run proxy` then `SIM_KEY=$(cat key-agent.txt) OPENAI_BASE_URL=http://127.0.0.1:8788/v1 OPENAI_API_KEY=local npm run server`, open `http://127.0.0.1:8790/`.
 
 # Actions
 
