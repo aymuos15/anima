@@ -11,6 +11,12 @@
   .composer input { flex: 1; height: 42px; padding: 6px 10px; font: inherit; border: 2px solid var(--nhs-secondary-text); border-radius: 4px; }
   .composer button { font: inherit; font-weight: 700; padding: 0 14px; background: var(--nhs-green); color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
   #view-messages { padding-bottom: 140px; }
+  .step-details summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .step-details summary::-webkit-details-marker { display: none; }
+  .step-details summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); margin-top: -4px; transition: transform .15s; }
+  .step-details[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+  .step-details summary:focus-visible { outline: 4px solid var(--nhs-yellow); outline-offset: 2px; }
+  .step-panel { margin-top: 8px; padding-left: 12px; border-left: 4px solid var(--nhs-border); min-height: 8px; }
   .live { font-size: 12px; color: var(--nhs-secondary-text); text-align: center; margin: 0 0 12px; }
 </style>
 </head>
@@ -188,8 +194,10 @@
     rows.filter(function (p) { return p.source === 'example'; }).forEach(function (p) { PATIENTS.push({ id: p.id, name: p.name, type: p.pathwayType }); });
   }).catch(function () {});
 
+  // [backend stage id, label shown to the patient, expandable]
+  // The backend infers referred/assessed/waiting/treated/discharged from record kinds; each maps to one patient-facing step.
   var STAGES = [
-    ['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']
+    ['referred', 'Referred'], ['assessed', 'Booked'], ['waiting', 'Pre-assessment', true], ['treated', 'Procedure'], ['discharged', 'Post-op care']
   ];
 
   var STATUS_TAG = { waiting: 'orange', open: 'orange', rejected: 'red', inpatient: 'blue', booked: 'blue', completed: 'green', sent: 'green', available: 'green', approved: 'green', done: 'green', shared: 'green' };
@@ -291,8 +299,18 @@
       var rail = el('div', 'rail'); rail.appendChild(el('div', 'marker'));
       if (i < STAGES.length - 1) rail.appendChild(el('div', 'line'));
       li.appendChild(rail);
-      var body = el('div'); body.appendChild(el('div', 'name', s[1]));
-      body.appendChild(el('p', 'detail', state !== 'pending' && last ? esc(fmt(last.createdAt) + ', ' + last.title) : (state === 'pending' ? 'Not yet reached' : '')));
+      var body = el('div');
+      var detail = el('p', 'detail', state !== 'pending' && last ? esc(fmt(last.createdAt) + ', ' + last.title) : (state === 'pending' ? 'Not yet reached' : ''));
+      if (s[2]) {
+        var dd = el('details', 'step-details');
+        dd.appendChild(el('summary', 'name', s[1]));
+        dd.appendChild(detail);
+        dd.appendChild(el('div', 'step-panel'));
+        body.appendChild(dd);
+      } else {
+        body.appendChild(el('div', 'name', s[1]));
+        body.appendChild(detail);
+      }
       li.appendChild(body); steps.appendChild(li);
     });
 
