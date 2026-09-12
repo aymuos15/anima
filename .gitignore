@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 key.txt
 agent/key-agent.txt
 agent/sessions.db*
