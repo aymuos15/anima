@@ -1,4 +1,10 @@
 import { openai } from '@animahealth/adk/openai'
+import { gemini } from '@animahealth/adk/gemini'
+
+// MODEL_PROVIDER=openai (default; needs OPENAI_API_KEY or the codex proxy) | gemini (needs GEMINI_API_KEY)
+const PROVIDER = process.env.MODEL_PROVIDER ?? (process.env.GEMINI_API_KEY && !process.env.OPENAI_API_KEY ? 'gemini' : 'openai')
+export const MODEL_NAME = process.env.MODEL ?? (PROVIDER === 'gemini' ? 'gemini-3.6-flash' : 'gpt-5.6-luna')
+export const model = () => PROVIDER === 'gemini' ? gemini(MODEL_NAME) : openai(MODEL_NAME, { reasoning: { effort: 'low' } })
 import { app } from './app.js'
 import { readTools } from './tools/read.js'
 import { writeTools, WRITE_TOOL_NAMES } from './tools/write.js'
@@ -23,7 +29,7 @@ const tools = [...readTools(app), ...writeTools(app)]
 
 export const pathwayAgent = app.agent({
   name: 'pathway_agent',
-  model: openai(process.env.MODEL ?? 'gpt-5.6-luna', { reasoning: { effort: 'low' } }),
+  model: model(),
   context: [
     app.context.system(SYSTEM),
     app.context.system((ctx) => {
@@ -43,7 +49,7 @@ When asked what is blocked, who is waiting, or where capacity is short, start wi
 
 export const adminAgent = app.agent({
   name: 'admin_agent',
-  model: openai(process.env.MODEL ?? 'gpt-5.6-luna', { reasoning: { effort: 'low' } }),
+  model: model(),
   context: [app.context.system(ADMIN_SYSTEM), app.context.history()],
   tools: [...tools, ...adminTools(app)],
 })

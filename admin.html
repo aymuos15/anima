@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Riverside operations console</title>
+<style>
+  :root { --blue:#005EB8; --dark:#003087; --text:#212B32; --muted:#4C6272; --line:#D8DDE0; --bg:#F0F4F5; --orange:#ED8B00; --red:#D5281B; --green:#007F3B; --white:#fff; --yellow:#FFEB3B; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; font-family:"Frutiger W01",Arial,Helvetica,sans-serif; color:var(--text); background:var(--bg); display:grid; grid-template-rows:56px 1fr; grid-template-columns:220px 1fr 400px; grid-template-areas:"top top top" "nav main chat"; height:100vh; overflow:hidden; }
+  header { grid-area:top; background:var(--blue); color:#fff; display:flex; align-items:center; gap:16px; padding:0 20px; }
+  header .logo { background:#fff; color:var(--blue); font-weight:700; padding:2px 8px; border-radius:2px; font-size:15px; }
+  header h1 { font-size:17px; margin:0; font-weight:400; }
+  header .clock { margin-left:auto; font-size:13px; opacity:.9; }
+  header button { font:inherit; font-size:13px; padding:5px 10px; border:1px solid #fff; background:transparent; color:#fff; border-radius:3px; cursor:pointer; }
+  nav { grid-area:nav; background:#fff; border-right:1px solid var(--line); padding:12px 0; overflow:auto; }
+  nav a { display:block; padding:9px 18px; color:var(--text); text-decoration:none; font-size:15px; }
+  nav a[aria-current] { background:var(--bg); border-left:4px solid var(--blue); font-weight:700; padding-left:14px; }
+  nav h3 { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:16px 18px 6px; font-weight:400; }
+  nav .pt { font-size:13px; padding:6px 18px; display:flex; justify-content:space-between; gap:8px; }
+  nav .pt small { color:var(--muted); }
+  main { grid-area:main; overflow:auto; padding:20px 24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+  .panel { background:#fff; border:1px solid var(--line); padding:16px; margin-bottom:16px; }
+  .panel h2 { font-size:16px; margin:0 0 12px; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { background:#fff; border:1px solid var(--line); padding:12px 14px; }
+  .kpi .v { font-size:28px; font-weight:700; line-height:1.1; }
+  .kpi .l { font-size:12px; color:var(--muted); margin-top:4px; }
+  .kpi.warn .v { color:#6E3619; } .kpi.bad .v { color:#6B0E0E; } .kpi.good .v { color:#00401E; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:400; font-size:12px; }
+  tr.click { cursor:pointer; } tr.click:hover { background:var(--bg); }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:3px 7px; border-radius:3px; border:1px solid; white-space:nowrap; }
+  .t-orange { background:#FFF4E5; color:#6E3619; border-color:#6E3619; } .t-blue { background:#E8EDF4; color:#003078; border-color:#003078; } .t-green { background:#E8F5EE; color:#00401E; border-color:#00401E; } .t-red { background:#FBE9E7; color:#6B0E0E; border-color:#6B0E0E; } .t-grey { background:#F0F4F5; color:#4C6272; border-color:#4C6272; }
+  .bar { height:10px; background:var(--bg); border-radius:5px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--blue); }
+  .bar.warn i { background:var(--orange); } .bar.bad i { background:var(--red); }
+  svg.graph { width:100%; height:auto; display:block; }
+  .node rect { fill:#fff; stroke:var(--line); stroke-width:2; rx:6; }
+  .node text { font-size:13px; fill:var(--muted); }
+  .node .count { font-size:11px; }
+  .node.reached rect { stroke:var(--blue); } .node.reached text { fill:var(--text); }
+  .node.current rect { stroke:var(--orange); stroke-width:3; fill:#FFF4E5; } .node.current text { fill:#6E3619; font-weight:700; }
+  .node.blocked rect { stroke:var(--red); stroke-width:3; fill:#FBE9E7; } .node.blocked text { fill:#6B0E0E; font-weight:700; }
+  .edge { stroke:var(--line); stroke-width:3; fill:none; } .edge.on { stroke:var(--blue); }
+  .lane { font-size:12px; fill:var(--muted); }
+  .muted { color:var(--muted); font-size:13px; }
+  .stagebar { display:flex; height:22px; border-radius:4px; overflow:hidden; font-size:11px; color:#fff; margin:8px 0; }
+  .stagebar span { display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap; }
+  .link { color:var(--blue); text-decoration:underline; cursor:pointer; background:none; border:0; font:inherit; padding:0; }
+  /* chat */
+  aside { grid-area:chat; background:#fff; border-left:1px solid var(--line); display:grid; grid-template-rows:auto 1fr auto; height:100%; }
+  aside .head { padding:14px 16px; border-bottom:1px solid var(--line); }
+  aside .head h2 { font-size:15px; margin:0; } aside .head p { margin:2px 0 0; font-size:12px; color:var(--muted); }
+  .thread { overflow:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:92%; padding:10px 12px; border-radius:10px; font-size:14px; line-height:1.45; white-space:pre-wrap; }
+  .msg--team { align-self:flex-start; background:var(--bg); border:1px solid var(--line); border-bottom-left-radius:3px; }
+  .msg--me { align-self:flex-end; background:var(--blue); color:#fff; border-bottom-right-radius:3px; }
+  .msg--event { align-self:stretch; max-width:none; background:#FFFBE6; border:1px dashed #E0D28A; font-size:12px; color:#5C4B00; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font:inherit; font-size:13px; font-weight:700; padding:6px 12px; border-radius:100px; border:2px solid var(--blue); background:#fff; color:var(--blue); cursor:pointer; }
+  .chip.no { border-color:var(--muted); color:var(--muted); }
+  .typing { align-self:flex-start; font-size:12px; color:var(--muted); }
+  .composer { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); }
+  .composer textarea { flex:1; font:inherit; font-size:14px; padding:8px; border:2px solid var(--muted); border-radius:4px; resize:none; height:60px; }
+  .composer button { font:inherit; font-weight:700; padding:0 14px; background:var(--green); color:#fff; border:0; border-radius:4px; cursor:pointer; }
+  .suggest { display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 10px; }
+  .suggest button { font:inherit; font-size:12px; padding:4px 9px; border:1px solid var(--line); background:#fff; border-radius:100px; cursor:pointer; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">NHS</span>
+  <h1>Riverside neighbourhood · operations console</h1>
+  <span class="clock" id="clock">sim clock: …</span>
+  <button id="btn-refresh" type="button">Refresh</button>
+  <button id="btn-tick" type="button">Advance 2h</button>
+</header>
+
+<nav>
+  <a href="#overview" data-view="overview" aria-current="page">Overview</a>
+  <a href="#capacity" data-view="capacity">Capacity</a>
+  <a href="#blocked" data-view="blocked">Blocked and waiting</a>
+  <a href="#cohort" data-view="cohort">Cohort</a>
+  <a href="#patients" data-view="patients">Patients</a>
+  <h3>Featured patients</h3>
+  <div id="nav-patients"></div>
+</nav>
+
+<main id="main"></main>
+
+<aside>
+  <div class="head"><h2>Ask the service</h2><p>Operations assistant with read and write access. Writes pause for your approval.</p></div>
+  <div class="thread" id="thread"></div>
+  <div class="suggest" id="suggest"></div>
+  <form class="composer" id="composer"><textarea id="q" placeholder="e.g. Who is blocked right now and why?"></textarea><button type="submit">Ask</button></form>
+</aside>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var el = function (tag, cls, html) { var n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var fmt = function (ms) { return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  var STAGES = [['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']];
+  var RX = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
+  var STAGE_COLOR = { referred: '#41B6E6', assessed: '#005EB8', waiting: '#ED8B00', treated: '#007F3B', discharged: '#00401E', other: '#AEB7BD' };
+  var FEATURED = [['SIM-000007', 'Mohammed Ali'], ['SIM-000504', 'Ben Cooper'], ['SIM-000023', 'George Brown'], ['SIM-000002', 'George Evans'], ['SIM-000070', 'Daniel Williams'], ['SIM-000001', 'Amira Khan']];
+
+  var overview = null, patients = null, pathways = {};
+  var main = $('main');
+
+  function api(path, body) {
+    return fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined).then(function (r) { return r.json(); });
+  }
+
+  /* ---------- data ---------- */
+  function loadOverview() {
+    return api('/api/admin/overview').then(function (o) {
+      overview = o;
+      $('clock').textContent = o.clock ? 'sim clock: ' + o.clock.nowText + (o.clock.paused ? ' (paused)' : '') : 'sim clock: unavailable (simulator not responding, retry)';
+      return o;
+    });
+  }
+  function loadPatients() { return api('/api/admin/patients').then(function (p) { patients = p; renderNav(); return p; }); }
+  function loadPathway(id, force) {
+    if (pathways[id] && !force) return Promise.resolve(pathways[id]);
+    return api('/api/patients/' + id + '/pathway').then(function (p) { pathways[id] = p; return p; });
+  }
+
+  /* ---------- routing ---------- */
+  function route() {
+    var h = location.hash.slice(1) || 'overview';
+    var view = h.split('/')[0], arg = h.split('/')[1];
+    document.querySelectorAll('nav a[data-view]').forEach(function (a) { if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    main.innerHTML = '<p class="muted">Loading…</p>';
+    if (view === 'patient' && arg) return renderPatient(arg);
+    if (view === 'capacity') return renderCapacity();
+    if (view === 'blocked') return renderBlocked();
+    if (view === 'cohort') return renderCohort();
+    if (view === 'patients') return renderPatients();
+    return renderOverview();
+  }
+  window.addEventListener('hashchange', route);
+
+  function renderNav() {
+    var box = $('nav-patients'); box.innerHTML = '';
+    FEATURED.forEach(function (f) {
+      var p = (patients || []).find(function (x) { return x.id === f[0]; }) || {};
+      var a = el('a', 'pt'); a.href = '#patient/' + f[0];
+      a.innerHTML = '<span>' + esc(f[1]) + '</span><small>' + esc(p.currentStage || '') + '</small>';
+      box.appendChild(a);
+    });
+  }
+
+  /* ---------- views ---------- */
+  function tagFor(stage, blocked) { return '<span class="tag ' + (blocked ? 't-red' : stage === 'waiting' ? 't-orange' : stage === 'discharged' ? 't-green' : 't-blue') + '">' + esc(blocked ? 'blocked' : stage || '?') + '</span>'; }
+
+  function renderOverview() {
+    var o = overview;
+    if (!o) return loadOverview().then(renderOverview);
+    var waiting = o.waitingNow || [];
+    var short = (o.capacity || []).filter(function (c) { return c.remaining != null && c.total && c.remaining / c.total <= 0.25; });
+    var byPatient = {}; waiting.forEach(function (w) { byPatient[w.patientId] = true; });
+    var g = o.cohort && o.cohort.byCondition && o.cohort.byCondition[o.cohort.condition];
+    var html = '<div class="kpis">' +
+      kpi(Object.keys(byPatient).length, 'patients with a waiting or rejected record', waiting.length ? 'warn' : 'good') +
+      kpi(waiting.filter(function (w) { return w.status === 'rejected'; }).length, 'rejected records', 'bad') +
+      kpi(short.length, 'services at or below 25% capacity', short.length ? 'warn' : 'good') +
+      kpi((o.live || []).filter(function (l) { return l.kind === 'bed' && l.status === 'occupied'; }).length, 'occupied beds visible') +
+      (g ? kpi(g.transitionsDays['assessed->waiting'] ? g.transitionsDays['assessed->waiting'].median + 'd' : '–', 'median assessment → waiting list, ' + esc(o.cohort.condition) + ' cohort') : '') +
+      '</div>';
+    html += '<div class="grid"><div class="panel"><h2>Capacity now</h2>' + capacityTable(o.capacity) + '</div>';
+    html += '<div class="panel"><h2>Waiting or rejected right now</h2>' + waitingTable(waiting.slice(0, 12)) + (waiting.length > 12 ? '<p class="muted"><a href="#blocked">See all ' + waiting.length + '</a></p>' : '') + '</div></div>';
+    html += '<div class="panel"><h2>Live resources</h2>' + liveTable(o.live) + '</div>';
+    main.innerHTML = html;
+    bindRows();
+  }
+
+  function kpi(v, l, cls) { return '<div class="kpi ' + (cls || '') + '"><div class="v">' + esc(v) + '</div><div class="l">' + l + '</div></div>'; }
+
+  function capacityTable(cap) {
+    if (!cap || !cap.length) return '<p class="muted">No capacity data.</p>';
+    return '<table><tr><th>Service</th><th>Free</th><th style="width:40%"></th></tr>' + cap.map(function (c) {
+      var pct = c.total ? Math.round(100 * c.remaining / c.total) : 0;
+      return '<tr><td>' + esc(c.title) + '<br><small class="muted">' + esc(c.site) + '</small></td><td>' + esc(c.remaining) + ' of ' + esc(c.total) + '</td><td><div class="bar ' + (pct === 0 ? 'bad' : pct <= 25 ? 'warn' : '') + '"><i style="width:' + pct + '%"></i></div></td></tr>';
+    }).join('') + '</table>';
+  }
+
+  function waitingTable(rows) {
+    if (!rows.length) return '<p class="muted">Nothing waiting or rejected.</p>';
+    return '<table><tr><th>Patient</th><th>Record</th><th>Status</th><th>Since</th></tr>' + rows.map(function (w) {
+      return '<tr class="click" data-id="' + esc(w.patientId) + '"><td>' + esc(w.patientId) + '</td><td>' + esc(w.title) + '<br><small class="muted">' + esc(w.kind) + ', ' + esc(w.site) + '</small></td><td><span class="tag ' + (w.status === 'rejected' ? 't-red' : 't-orange') + '">' + esc(w.status) + '</span></td><td>' + esc(w.since) + '</td></tr>';
+    }).join('') + '</table>';
+  }
+
+  function liveTable(live) {
+    if (!live || !live.length) return '<p class="muted">None.</p>';
+    return '<table><tr><th>Site</th><th>Kind</th><th>Resource</th><th>Status</th><th>Detail</th></tr>' + live.slice(0, 20).map(function (l) {
+      var d = l.data || {}; var detail = Object.keys(d).filter(function (k) { return typeof d[k] !== 'object'; }).slice(0, 4).map(function (k) { return k + ': ' + d[k]; }).join(', ');
+      return '<tr><td>' + esc(l.site) + '</td><td>' + esc(l.kind) + '</td><td>' + esc(l.title) + '</td><td>' + esc(l.status) + '</td><td class="muted">' + esc(detail) + '</td></tr>';
+    }).join('') + '</table>';
+  }
+
+  function renderCapacity() {
+    if (!overview) return loadOverview().then(renderCapacity);
+    main.innerHTML = '<div class="panel"><h2>Capacity by service</h2>' + capacityTable(overview.capacity) + '<p class="muted">Capacity is finite per service and refreshes as the simulation clock advances. Actions against an exhausted service return 409.</p></div><div class="panel"><h2>Beds, robots, theatre lists, staff</h2>' + liveTable(overview.live) + '</div>';
+  }
+
+  function renderBlocked() {
+    if (!overview) return loadOverview().then(renderBlocked);
+    main.innerHTML = '<div class="panel"><h2>All waiting or rejected records</h2>' + waitingTable(overview.waitingNow || []) + '</div>';
+    bindRows();
+  }
+
+  function renderCohort() {
+    if (!overview) return loadOverview().then(renderCohort);
+    var c = overview.cohort;
+    if (!c) { main.innerHTML = '<p class="muted">No cohort dataset built yet.</p>'; return; }
+    var html = '';
+    Object.keys(c.byCondition).forEach(function (name) {
+      var g = c.byCondition[name]; if (g.patients < 3 && name !== c.condition) return;
+      var total = Object.values(g.stageNow).reduce(function (a, b) { return a + b; }, 0);
+      html += '<div class="panel"><h2>' + esc(name) + ' <span class="muted">' + g.patients + ' patients</span></h2>';
+      html += '<div class="stagebar">' + Object.keys(g.stageNow).map(function (s) { var w = 100 * g.stageNow[s] / total; return '<span style="width:' + w + '%;background:' + (STAGE_COLOR[s] || '#AEB7BD') + '">' + esc(s) + ' ' + g.stageNow[s] + '</span>'; }).join('') + '</div>';
+      html += '<table><tr><th>Transition</th><th>n</th><th>Median days</th><th>Range</th></tr>' + Object.keys(g.transitionsDays).map(function (k) { var t = g.transitionsDays[k]; return t ? '<tr><td>' + esc(k) + '</td><td>' + t.n + '</td><td>' + t.median + '</td><td>' + t.min + '–' + t.max + '</td></tr>' : ''; }).join('') + '</table>';
+      if (g.commonBlockers && g.commonBlockers.length) html += '<p class="muted">Common blockers: ' + g.commonBlockers.map(function (b) { return esc(b.item) + ' (' + b.count + ')'; }).join('; ') + '</p>';
+      if (g.commonNeeds && g.commonNeeds.length) html += '<p class="muted">Common needs: ' + g.commonNeeds.map(function (b) { return esc(b.item) + ' (' + b.count + ')'; }).join('; ') + '</p>';
+      html += '</div>';
+    });
+    main.innerHTML = html + '<p class="muted">Built ' + esc(c.builtAt) + ' from the synthetic world.</p>';
+  }
+
+  function renderPatients() {
+    if (!patients) return loadPatients().then(renderPatients);
+    var rows = patients.slice().sort(function (a, b) { return (a.source > b.source ? 1 : -1); });
+    main.innerHTML = '<div class="panel"><h2>Patients <span class="muted">' + rows.length + '</span></h2><table><tr><th>Id</th><th>Name</th><th>Conditions</th><th>Pathway</th><th>Stage</th><th>Blockers</th></tr>' + rows.map(function (p) {
+      return '<tr class="click" data-id="' + esc(p.id) + '"><td>' + esc(p.id) + '</td><td>' + esc(p.name || '') + '</td><td>' + esc((p.conditions || []).join(', ')) + '</td><td>' + esc(p.pathwayType || (p.source === 'cohort' ? 'cohort' : '')) + '</td><td>' + tagFor(p.currentStage, false) + '</td><td class="muted">' + esc((p.blockers || []).slice(0, 2).join('; ')) + '</td></tr>';
+    }).join('') + '</table></div>';
+    bindRows();
+  }
+
+  function renderPatient(id) {
+    loadPathway(id).then(function (p) {
+      var pt = p.patient || {};
+      var ex = (patients || []).find(function (x) { return x.id === id; }) || {};
+      var m = p.medicines || {};
+      var blockers = (p.blockers || []).concat(m.blockers || []);
+      var known = FEATURED.find(function (f) { return f[0] === id; });
+      var html = '<div class="panel"><h2>' + esc(pt.name || ex.name || (known && known[1]) || id) + ' <span class="muted">' + esc(id) + (pt.birthDate ? ' · born ' + esc(pt.birthDate) : '') + '</span></h2>';
+      if (p.errors && p.errors.length) html += '<p class="muted" style="color:#6B0E0E">Some services did not respond, so this view may be incomplete: ' + esc(p.errors.map(function (e) { return e.split(':')[0]; }).join(', ')) + '. <button class="link" data-reload="' + esc(id) + '">Retry</button></p>';
+      html += '<p class="muted">' + esc((pt.conditions || []).join(', ')) + ' · needs: ' + esc((pt.needs || []).join(', ') || 'none') + ' · goals: ' + esc((pt.goals || []).join('; ') || 'none') + '</p>';
+      if (ex.story) html += '<p>' + esc(ex.story) + '</p>';
+      html += '<svg class="graph" viewBox="0 0 1000 ' + (m.prescriptions && m.prescriptions.length ? 330 : 170) + '" id="graph"></svg>';
+      html += '<p><button class="link" data-ask="Summarise ' + esc(id) + ' and propose the single best next action.">Ask the assistant for the next action</button> · <button class="link" data-reload="' + esc(id) + '">Reload records</button></p></div>';
+      html += '<div class="grid"><div class="panel"><h2>Blockers</h2>' + (blockers.length ? '<ul>' + blockers.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' : '<p class="muted">None</p>') + '</div>';
+      if (m.prescriptions && m.prescriptions.length) html += '<div class="panel"><h2>Medicines</h2><table>' + m.prescriptions.map(function (r) { return '<tr><td>' + esc(r.drug) + '</td><td>' + esc(r.status) + ' v' + esc(r.version) + '</td><td class="muted">' + (r.productId ? esc(r.quantity) + ' units linked' : 'not linked to stock') + '</td></tr>'; }).join('') + m.tests.map(function (t) { return '<tr><td>Test: ' + esc(t.title) + '</td><td>' + esc(t.status) + '</td><td></td></tr>'; }).join('') + m.visits.map(function (v) { return '<tr><td>Visit: ' + esc(v.title) + '</td><td>' + esc(v.status) + '</td><td></td></tr>'; }).join('') + '</table></div>';
+      html += '</div><div class="panel"><h2>Records</h2><table><tr><th>When</th><th>Site</th><th>Record</th><th>Stage</th><th>Status</th><th>v</th></tr>' + (p.events || []).slice().reverse().map(function (e) {
+        return '<tr><td>' + esc(fmt(e.createdAt)) + '</td><td>' + esc(e.site) + '</td><td>' + esc(e.title) + '<br><small class="muted">' + esc(e.kind) + ' ' + esc(e.id) + '</small></td><td>' + esc(e.stage) + '</td><td>' + tagFor(e.status, e.status === 'rejected') + '</td><td class="muted">' + esc(e.version || '') + '</td></tr>';
+      }).join('') + '</table></div>';
+      main.innerHTML = html;
+      drawGraph($('graph'), p);
+      main.querySelectorAll('[data-ask]').forEach(function (b) { b.addEventListener('click', function () { send(b.dataset.ask); }); });
+      main.querySelectorAll('[data-reload]').forEach(function (b) { b.addEventListener('click', function () { loadPathway(b.dataset.reload, true).then(function () { route(); }); }); });
+    });
+  }
+
+  function bindRows() { main.querySelectorAll('tr.click').forEach(function (tr) { tr.addEventListener('click', function () { location.hash = 'patient/' + tr.dataset.id; }); }); }
+
+  /* ---------- graph ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  function s(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; }
+  function drawGraph(svg, p) {
+    svg.innerHTML = '';
+    var counts = {}, blocked = {};
+    (p.events || []).forEach(function (e) { counts[e.stage] = (counts[e.stage] || 0) + 1; if (e.status === 'rejected' || e.status === 'waiting') blocked[e.stage] = true; });
+    svg.appendChild(s('text', { x: 20, y: 40, class: 'lane' }, 'Care pathway'));
+    lane(svg, STAGES, 60, p.stagesReached || [], p.currentStage, blocked, counts);
+    var m = p.medicines;
+    if (m && m.prescriptions && m.prescriptions.length) {
+      svg.appendChild(s('text', { x: 20, y: 200, class: 'lane' }, 'Medicines'));
+      var idx = RX.findIndex(function (x) { return x[0] === m.stage; }); var reached = RX.slice(0, idx + 1).map(function (x) { return x[0]; });
+      var rb = {}; (m.blockers || []).forEach(function (b) { if (/waiting to be dispensed|not linked/.test(b)) rb.approved = true; if (/dispensed, waiting/.test(b)) rb.dispensed = true; });
+      var rc = {}; rc[m.stage] = m.prescriptions.length;
+      lane(svg, RX, 220, reached, m.stage === 'collected' ? null : m.stage, rb, rc);
+      svg.appendChild(s('path', { d: 'M 640 120 C 640 160, 500 160, 500 220', class: 'edge ' + (reached.length ? 'on' : '') }));
+    }
+  }
+  function lane(svg, stages, y, reached, cur, blocked, counts) {
+    var x0 = 60, w = 150, gap = 40, h = 60;
+    stages.forEach(function (st, i) {
+      var x = x0 + i * (w + gap);
+      if (i > 0) svg.appendChild(s('path', { d: 'M ' + (x - gap) + ' ' + (y + h / 2) + ' L ' + x + ' ' + (y + h / 2), class: 'edge ' + (reached.indexOf(st[0]) >= 0 && reached.indexOf(stages[i - 1][0]) >= 0 ? 'on' : '') }));
+      var g = s('g', { class: 'node' + (reached.indexOf(st[0]) >= 0 ? ' reached' : '') + (st[0] === cur ? ' current' : '') + (blocked[st[0]] ? ' blocked' : ''), transform: 'translate(' + x + ',' + y + ')' });
+      g.appendChild(s('rect', { width: w, height: h })); g.appendChild(s('text', { x: 14, y: 26 }, st[1]));
+      g.appendChild(s('text', { x: 14, y: 46, class: 'count' }, counts[st[0]] ? counts[st[0]] + ' record' + (counts[st[0]] > 1 ? 's' : '') : ''));
+      svg.appendChild(g);
+    });
+  }
+
+  /* ---------- chat ---------- */
+  var thread = $('thread'), sessionId = null, busy = false, pending = [];
+  function scroll() { thread.scrollTop = thread.scrollHeight; }
+  function md(t) {
+    return esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^(?:- |\* )(.*)$/gm, '• $1').replace(/^#+\s*(.*)$/gm, '<strong>$1</strong>');
+  }
+  function addTeam(t) { thread.appendChild(el('div', 'msg msg--team', md(t))); scroll(); }
+  function addMe(t) { thread.appendChild(el('div', 'msg msg--me', esc(t))); scroll(); }
+  function addEvent(t) { thread.appendChild(el('div', 'msg msg--event', esc(t))); scroll(); }
+  var typingEl = null;
+  function typing(on) { if (typingEl) { typingEl.remove(); typingEl = null; } if (on) { typingEl = el('div', 'typing', 'Working…'); thread.appendChild(typingEl); scroll(); } }
+  function chips(opts) { var box = el('div', 'chips'); opts.forEach(function (o) { var b = el('button', 'chip' + (o.no ? ' no' : ''), esc(o.label)); b.type = 'button'; b.addEventListener('click', function () { box.remove(); addMe(o.label); o.then(); }); box.appendChild(b); }); thread.appendChild(box); scroll(); }
+
+  function describe(y) {
+    var a = y.args || {};
+    var base = { ask_patient: null, book_appointment: 'Book appointment: ' + a.title + ', ' + a.startsAtText, send_message: 'Send ' + a.channel + ' to ' + a.patientId + ': ' + a.subject, create_task: 'Create task for ' + a.patientId + ': ' + a.title, schedule_visit: 'Schedule visit for ' + a.patientId + ': ' + a.title, progress_referral: a.command + ' referral ' + a.resourceId + ' (v' + a.expectedVersion + ')', share_record: 'Share ' + a.resourceId + ' with ' + a.target, prescription_action: a.command + ' prescription ' + a.resourceId + ' (v' + a.expectedVersion + ')' + (a.productId ? ', ' + a.productId + ' × ' + a.quantity : ''), order_test: 'Order ' + a.panelId + ' for ' + a.patientId + ' (' + a.priority + ')', hospital_command: a.command + ' attendance ' + a.resourceId + ' (v' + a.expectedVersion + ')' + (a.clinician ? ', ' + a.clinician : '') + (a.disposition ? ', ' + a.disposition : ''), complete_task: 'Complete task ' + a.resourceId + ' (v' + a.expectedVersion + ')', advance_clock: 'Advance simulation clock by ' + a.minutes + ' minutes' };
+    return y.name in base ? base[y.name] : y.name + ' ' + JSON.stringify(a);
+  }
+
+  function handle(out) {
+    typing(false); busy = false;
+    if (out.error) { addEvent('Error: ' + out.error); return; }
+    sessionId = out.sessionId; pending = (out.yieldedTools || []).slice();
+    if (out.text) addTeam(out.text);
+    pending.forEach(function (y) {
+      if (y.name === 'ask_patient') { addTeam(y.args.question || ''); chips((y.args.options || []).map(function (o) { return { label: o, then: function () { resume(y.callId, { choice: o }); } }; })); return; }
+      var d = describe(y); if (d) addEvent('Approval needed: ' + d + (y.args.reason ? '\n' + y.args.reason : ''));
+      chips([{ label: 'Approve', then: function () { resume(y.callId, { approved: true }); } }, { label: 'Decline', no: true, then: function () { resume(y.callId, { approved: false }); } }]);
+    });
+    if (!pending.length && /done|booked|dispensed|collected|discharged|shared|advanced|completed|ordered|scheduled/i.test(out.text || '')) { pathways = {}; loadOverview().then(function () { if (!location.hash || /overview|blocked|capacity|patient/.test(location.hash)) route(); }); }
+  }
+  function turn(input) { if (busy) return; busy = true; typing(true); api('/api/admin/chat', { sessionId: sessionId, input: input }).then(handle).catch(function (e) { typing(false); busy = false; addEvent('Could not reach the assistant: ' + e); }); }
+  function resume(callId, input) { pending = pending.filter(function (y) { return y.callId !== callId; }); document.querySelectorAll('.chips').forEach(function (c) { c.remove(); }); turn({ tools: [{ callId: callId, input: input }] }); }
+  function send(text) {
+    if (!text || busy) return; addMe(text);
+    if (pending.length) { var y = pending[0]; var yes = /^(y|yes|ok|okay|sure|go ahead|approve|do it)\b/i.test(text); resume(y.callId, y.name === 'ask_patient' ? { choice: text } : { approved: yes, note: text }); return; }
+    turn({ message: text });
+  }
+  $('composer').addEventListener('submit', function (e) { e.preventDefault(); var v = $('q').value.trim(); $('q').value = ''; send(v); });
+  $('q').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('composer').requestSubmit(); } });
+  [
+    'Who is blocked right now and why?',
+    'Which services are short of capacity?',
+    'What usually happens to arthritis patients after assessment?',
+    'What is the next action for SIM-000002?',
+    'Advance the clock by 2 hours and tell me what changed.'
+  ].forEach(function (q) { var b = el('button', null, esc(q)); b.type = 'button'; b.addEventListener('click', function () { send(q); }); $('suggest').appendChild(b); });
+
+  $('btn-refresh').addEventListener('click', function () { pathways = {}; loadOverview().then(route); });
+  $('btn-tick').addEventListener('click', function () { send('Advance the clock by 120 minutes and tell me what changed.'); });
+
+  addTeam('Ask about the service, a patient, capacity, or what usually happens. I can also act on records after you approve.');
+  Promise.all([loadOverview(), loadPatients()]).then(route);
+})();
+</script>
+</body>
+</html>

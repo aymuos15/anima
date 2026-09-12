@@ -1,0 +1,304 @@
+[
+ {
+  "id": "SIM-000003",
+  "name": "Aisha Patel",
+  "birthDate": "1992-05-12",
+  "conditions": ["Asthma"],
+  "needs": ["Shift work", "SMS preferred"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Fit reviews around night shifts"],
+  "pathwayType": "Digital access barrier + provider choice",
+  "story": "Aisha works nights: on 2026-01-15 she missed a morning appointment after a shift and asked the practice not to call before midday, and on 2026-09-03 she asked to book through the app for a late-afternoon slot. An open request 'Appointment links expire during working shift' (r-10) and an unanswered referrals choice 'Choose preferred diagnostic provider' (r-50, Northbank CDC 9 days vs Riverside Hub 15 days, evening slot needed) are both still outstanding while she waits in A&E with wheeze.",
+  "currentStage": "discharged",
+  "blockers": ["Wheeze (hospital-attendance, waiting, hospital)", "Booking link expires before she can use it", "Diagnostic provider choice not made"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3676", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3678", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" },
+   { "site": "gp", "id": "r-10", "kind": "request", "status": "open", "title": "Appointment links expire during working shift", "when": "2026-09-12" },
+   { "site": "referrals", "id": "r-50", "kind": "choice", "status": "open", "title": "Choose preferred diagnostic provider", "when": "2026-09-12" },
+   { "site": "hospital", "id": "hospital-attendance-seed-2", "kind": "hospital-attendance", "status": "waiting", "title": "Wheeze", "when": "2026-09-12" },
+   { "site": "gp", "id": "r-3675", "kind": "appointment", "status": "booked", "title": "Practice follow-up", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["send_message with a non-expiring booking link after midday", "book_appointment evening slot at Northbank CDC", "share_record the provider choice back to referrals"]
+ },
+ {
+  "id": "SIM-000004",
+  "name": "Thomas Reed",
+  "birthDate": "2004-05-12",
+  "conditions": ["Possible inherited disorder"],
+  "needs": ["Interpreter"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Understand the specialist letter before deciding on next steps"],
+  "pathwayType": "Genomic test with uncertain result",
+  "story": "Thomas raised a family-history question on 2026-01-15 and a specialist referral was recorded. A rare-disease panel (r-45) is now 'reviewed' with result 'uncertain', consent limited to clinical-only and family contact not allowed. On 2026-06-21 an appointment was moved because no interpreter was available, and on 2026-09-03 he asked for a longer follow-up with an interpreter to explain the specialist letter.",
+  "currentStage": "discharged",
+  "blockers": ["Genomic result uncertain, consent clinical-only", "Family contact not permitted", "Interpreter not booked for follow-up"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3681", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3682", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-3683", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" },
+   { "site": "hospital", "id": "r-45", "kind": "genomic-test", "status": "reviewed", "title": "Rare-disease panel: consent and phenotype review", "when": "2026-09-12" },
+   { "site": "gp", "id": "document-batch-2-004", "kind": "discharge-summary", "status": "sent", "title": "Gastroenterology · Investigation episode handover", "when": "2026-09-07" },
+   { "site": "hospital", "id": "hospital-attendance-seed-3", "kind": "hospital-attendance", "status": "assessing", "title": "Head injury", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["book_appointment double slot with interpreter", "send_message plain-language summary of the panel result", "share_record genomic report with GP"]
+ },
+ {
+  "id": "SIM-000005",
+  "name": "Grace Okafor",
+  "birthDate": "1991-05-12",
+  "conditions": ["Diabetes"],
+  "needs": ["Device setup"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Bring home measurements to a review without retyping them"],
+  "pathwayType": "Wearable data not reaching the record",
+  "story": "On 2026-01-15 Grace brought a paper list of home readings because her monitor had stopped syncing, and on 2026-09-03 she asked for help reconnecting after changing phone, with no new readings received. The wearables register still shows her glucose monitor (r-12) as 'active' with 88% battery and 'good' quality, so the device looks fine to the service while the data is not arriving.",
+  "currentStage": "discharged",
+  "blockers": ["Device paired to old phone; no readings received", "Register shows device active, masking the gap"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3686", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3687", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-3688", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" },
+   { "site": "wearables", "id": "r-12", "kind": "device", "status": "active", "title": "Glucose monitor", "when": "2026-09-12" },
+   { "site": "gp", "id": "r-3685", "kind": "appointment", "status": "booked", "title": "Practice follow-up", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["schedule_visit device reconnection support before the review", "send_message setup instructions plus paper fallback", "book_appointment telephone review once readings resume"]
+ },
+ {
+  "id": "SIM-000006",
+  "name": "Eleanor Chen",
+  "birthDate": "1943-05-12",
+  "conditions": ["Frailty"],
+  "needs": ["Step-free access"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Attend local appointments with reliable transport"],
+  "pathwayType": "Care package waiting for funding",
+  "story": "Eleanor cancelled an upstairs appointment on 2026-01-15 when the lift was out and asked for a step-free room; on 2026-06-21 her husband could not drive her to a review. Community holds an open care-plan 'Home support not yet arranged' (r-36, no carer, home access unconfirmed) and a care-package 'Home care assessment awaiting allocation' (r-44, 2 visits/day, funding decision pending, no key safe) while she sits in an AMU bed after presenting with reduced mobility.",
+  "currentStage": "discharged",
+  "blockers": ["Home care assessment awaiting allocation (care-package, waiting, community)", "Funding decision pending", "No key safe / home access unconfirmed"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3691", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3692", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "community", "id": "r-36", "kind": "care-plan", "status": "open", "title": "Home support not yet arranged", "when": "2026-09-12" },
+   { "site": "community", "id": "r-44", "kind": "care-package", "status": "waiting", "title": "Home care assessment awaiting allocation", "when": "2026-09-12" },
+   { "site": "hospital", "id": "hospital-attendance-seed-5", "kind": "hospital-attendance", "status": "take", "title": "Reduced mobility", "when": "2026-09-12" },
+   { "site": "community", "id": "r-14", "kind": "device", "status": "active", "title": "Home activity watch", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["schedule_visit home access and key safe assessment", "send_message chase funding decision", "book_appointment step-free local clinic room"]
+ },
+ {
+  "id": "SIM-000008",
+  "name": "Sofia Williams",
+  "birthDate": "1978-05-12",
+  "conditions": ["Prevention review"],
+  "needs": ["Offline contact"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Receive invitations without needing a smartphone"],
+  "pathwayType": "Screening invitation unanswered (digital exclusion)",
+  "story": "Sofia could not open an app-only invitation on 2026-01-15 and asked for appointment information by letter; on 2026-09-03 she asked for another invitation by post with a phone number rather than only a web link. The screening record (r-38) is still open with channel 'app', delivered true, completed false, so the system counts it as delivered while she has no way to respond.",
+  "currentStage": "discharged",
+  "blockers": ["Invitation delivered by app only", "Screening not completed", "Currently an inpatient after a fall at home"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3701", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3702", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-3703", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" },
+   { "site": "gp", "id": "r-38", "kind": "screening", "status": "open", "title": "Screening invitation unanswered", "when": "2026-09-12" },
+   { "site": "hospital", "id": "hospital-attendance-seed-7", "kind": "hospital-attendance", "status": "inpatient", "title": "Fall at home", "when": "2026-09-12" },
+   { "site": "gp", "id": "document-batch-2-008", "kind": "discharge-summary", "status": "sent", "title": "Diabetes service · Education visit handover", "when": "2026-09-03" }
+  ],
+  "suggestedNextActions": ["send_message reissue invitation by post with a callback number", "book_appointment during school hours", "hospital_command discharge once the fall episode is complete"]
+ },
+ {
+  "id": "SIM-000009",
+  "name": "Thomas Chen",
+  "birthDate": "1975-04-12",
+  "conditions": ["Asthma"],
+  "needs": [],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Pharmacy First minor illness",
+  "story": "After three routine GP contacts between 2026-04-01 and 2026-06-21 and an ED attendance discharge notification sent on 2026-09-02, the practice sent Thomas to community pharmacy. A sore throat referral (pharmacy-referral-seed-0) arrived at 07:30 on 2026-09-12 and is still at stage 'received' — no consultation, supply or outcome recorded back to the GP yet.",
+  "currentStage": "discharged",
+  "blockers": ["Pharmacy referral received but not yet actioned", "No outcome returned to the practice"],
+  "keyRecords": [
+   { "site": "pharmacy", "id": "pharmacy-referral-seed-0", "kind": "pharmacy-referral", "status": "received", "title": "Sore throat referral", "when": "2026-09-12" },
+   { "site": "gp", "id": "document-batch-2-009", "kind": "discharge-summary", "status": "sent", "title": "Emergency department · Attendance discharge notification", "when": "2026-09-02" },
+   { "site": "gp", "id": "r-108", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-104", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-04-01" }
+  ],
+  "suggestedNextActions": ["book_appointment pharmacy consultation slot", "send_message confirm the pharmacy appointment", "share_record pharmacy outcome back to the GP"]
+ },
+ {
+  "id": "SIM-000010",
+  "name": "Oliver Khan",
+  "birthDate": "1993-06-22",
+  "conditions": ["Diabetes"],
+  "needs": ["Transport"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Pharmacy First with transport need",
+  "story": "Oliver has one recorded GP contact on 2026-06-29 and an ophthalmology day-unit letter sent on 2026-09-01 that is still unassigned. A pharmacy referral for infected insect bites (pharmacy-referral-seed-1) was received at 07:00 on 2026-09-12 and remains at stage 'received'; with a recorded transport need, the choice of which pharmacy he can actually reach has not been settled.",
+  "currentStage": "discharged",
+  "blockers": ["Pharmacy referral not yet picked up", "Transport need unaddressed", "Day-unit letter has no assignee"],
+  "keyRecords": [
+   { "site": "pharmacy", "id": "pharmacy-referral-seed-1", "kind": "pharmacy-referral", "status": "received", "title": "Insect bite review request", "when": "2026-09-12" },
+   { "site": "gp", "id": "document-batch-2-010", "kind": "discharge-summary", "status": "sent", "title": "Ophthalmology · Day-unit correspondence", "when": "2026-09-01" },
+   { "site": "gp", "id": "r-111", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-06-29" }
+  ],
+  "suggestedNextActions": ["send_message offer a pharmacy within walking distance", "book_appointment pharmacy consultation", "share_record day-unit letter with the duty GP"]
+ },
+ {
+  "id": "SIM-000011",
+  "name": "Zara Khan",
+  "birthDate": "1935-06-10",
+  "conditions": ["Hypertension", "Heart failure"],
+  "needs": ["Step-free access"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Post-surgical handover with unconfirmed follow-up",
+  "story": "A general surgery post-episode handover was sent to the duty GP on 2026-08-31, and an open practice task 'Confirm follow-up arrangements' (r-120) has been running since 2026-09-09 with one contact attempt and a due date of 2026-09-17. A separate minor illness pharmacy referral (pharmacy-referral-seed-2) also landed on 2026-09-12, so two open threads are running for a 91-year-old who needs step-free access.",
+  "currentStage": "waiting",
+  "blockers": ["Open practice task: Confirm follow-up arrangements", "Only one contact attempt made", "Step-free room not confirmed"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-120", "kind": "task", "status": "open", "title": "Confirm follow-up arrangements", "when": "2026-09-09" },
+   { "site": "gp", "id": "document-batch-2-011", "kind": "discharge-summary", "status": "sent", "title": "General surgery · Post-episode handover", "when": "2026-08-31" },
+   { "site": "pharmacy", "id": "pharmacy-referral-seed-2", "kind": "pharmacy-referral", "status": "received", "title": "Minor illness review", "when": "2026-09-12" },
+   { "site": "gp", "id": "r-118", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-07-11" }
+  ],
+  "suggestedNextActions": ["send_message second contact attempt before the 2026-09-17 due date", "book_appointment step-free ground-floor room", "schedule_visit if telephone contact fails"]
+ },
+ {
+  "id": "SIM-000012",
+  "name": "Mei Brown",
+  "birthDate": "1946-04-20",
+  "conditions": [],
+  "needs": [],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Rehab discharge, repeat contact attempts failing",
+  "story": "A therapy service rehabilitation handover was sent to the practice document team on 2026-08-30 noting equipment and assessment complete. Since 2026-09-09 an open task 'Confirm follow-up arrangements' (r-126) has recorded two contact attempts with nothing confirmed and a due date of 2026-09-19; her last recorded consultation was 2026-06-25.",
+  "currentStage": "waiting",
+  "blockers": ["Open practice task: Confirm follow-up arrangements", "Two failed contact attempts", "No clinical contact since 2026-06-25"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-126", "kind": "task", "status": "open", "title": "Confirm follow-up arrangements", "when": "2026-09-09" },
+   { "site": "gp", "id": "document-batch-2-012", "kind": "discharge-summary", "status": "sent", "title": "Therapy service · Rehabilitation episode handover", "when": "2026-08-30" },
+   { "site": "gp", "id": "r-124", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-06-25" },
+   { "site": "gp", "id": "r-122", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-05-20" }
+  ],
+  "suggestedNextActions": ["send_message letter after two failed calls", "schedule_visit rehab follow-up at home", "book_appointment therapy review"]
+ },
+ {
+  "id": "SIM-000021",
+  "name": "Eleanor Williams",
+  "birthDate": "1992-07-27",
+  "conditions": [],
+  "needs": [],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Follow-up task never started",
+  "story": "An emergency department attendance discharge notification was sent to the duty GP on 2026-09-04. The resulting task 'Confirm follow-up arrangements' (r-196) has been open since 2026-09-09 with contactAttempts still at zero, so nobody has yet tried to reach her; her last practice contact was 2026-07-15.",
+  "currentStage": "waiting",
+  "blockers": ["Open practice task with zero contact attempts", "Post-ED follow-up not arranged"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-196", "kind": "task", "status": "open", "title": "Confirm follow-up arrangements", "when": "2026-09-09" },
+   { "site": "hospital", "id": "document-batch-2-021", "kind": "discharge-summary", "status": "sent", "title": "Emergency department · Attendance discharge notification", "when": "2026-09-04" },
+   { "site": "gp", "id": "r-194", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-07-15" }
+  ],
+  "suggestedNextActions": ["send_message first contact attempt", "book_appointment post-ED review"]
+ },
+ {
+  "id": "SIM-000039",
+  "name": "Oliver Ahmed",
+  "birthDate": "1955-09-28",
+  "conditions": ["Asthma", "Hypertension"],
+  "needs": ["Step-free access"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Uncontactable after day-case surgery",
+  "story": "An orthopaedics day-case discharge handover was reviewed by the duty GP on 2026-08-31. The linked task 'Confirm follow-up arrangements' (r-322) has been open since 2026-09-09 and has exhausted three contact attempts without success, despite five routine contacts between 2026-01-04 and 2026-07-15 and a recorded step-free access need.",
+  "currentStage": "waiting",
+  "blockers": ["Three failed contact attempts", "Post day-case follow-up unconfirmed", "Step-free access requirement"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-322", "kind": "task", "status": "open", "title": "Confirm follow-up arrangements", "when": "2026-09-09" },
+   { "site": "hospital", "id": "document-batch-2-039", "kind": "discharge-summary", "status": "reviewed", "title": "Orthopaedics · Day-case discharge handover", "when": "2026-08-31" },
+   { "site": "gp", "id": "r-320", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-07-15" },
+   { "site": "gp", "id": "r-318", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-05-13" }
+  ],
+  "suggestedNextActions": ["send_message written invitation after three failed calls", "schedule_visit home review", "book_appointment ground-floor orthopaedic follow-up"]
+ },
+ {
+  "id": "SIM-000058",
+  "name": "Daniel Brown",
+  "birthDate": "1976-01-07",
+  "conditions": [],
+  "needs": ["Offline contact", "Carer involvement"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel"],
+  "pathwayType": "Discharge letter stuck in draft",
+  "story": "The ophthalmology day-unit correspondence (document-batch-2-058) is still in status 'draft' with no assignee as of 2026-09-09, after the document team corrected an appointment-reference mismatch. Meanwhile the task 'Confirm follow-up arrangements' (r-463) has used three contact attempts on a patient recorded as needing offline contact and carer involvement, so the letter he cannot receive digitally has not even been sent.",
+  "currentStage": "waiting",
+  "blockers": ["Discharge letter unsent (draft, no assignee)", "Three failed contact attempts", "Carer not involved in contact attempts"],
+  "keyRecords": [
+   { "site": "hospital", "id": "document-batch-2-058", "kind": "discharge-summary", "status": "draft", "title": "Ophthalmology · Day-unit correspondence", "when": "2026-09-09" },
+   { "site": "gp", "id": "r-463", "kind": "task", "status": "open", "title": "Confirm follow-up arrangements", "when": "2026-09-09" },
+   { "site": "gp", "id": "r-461", "kind": "encounter", "status": "completed", "title": "Primary care contact", "when": "2026-07-05" }
+  ],
+  "suggestedNextActions": ["share_record assign and send the draft discharge letter", "send_message contact the named carer by post or phone", "book_appointment ophthalmology follow-up"]
+ },
+ {
+  "id": "SIM-000506",
+  "name": "Peter Davies",
+  "birthDate": "1948-12-16",
+  "conditions": ["Hearing loss", "Arthritis"],
+  "needs": ["Written instructions", "Step-free access"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Leave each appointment with a readable summary"],
+  "pathwayType": "Accessible information / communication need",
+  "story": "On 2026-01-15 Peter missed part of a telephone conversation and came to reception in person to check the appointment date. He asked for written summaries and face-to-face appointments on 2026-06-21, and on 2026-09-03 he brought his previous letter to a review and confirmed that large, clearly printed details help him attend.",
+  "currentStage": "assessed",
+  "blockers": ["Telephone is not a usable channel", "No written summary issued after appointments"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3735", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3736", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-3737", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" }
+  ],
+  "suggestedNextActions": ["send_message large-print written summary after each contact", "book_appointment face-to-face, step-free room"]
+ },
+ {
+  "id": "SIM-000511",
+  "name": "Iris Walker",
+  "birthDate": "1937-08-05",
+  "conditions": ["Arthritis", "Frailty"],
+  "needs": ["Home visit", "Offline contact"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Know which team is visiting and when"],
+  "pathwayType": "Home visiting coordination",
+  "story": "On 2026-01-15 Iris asked the practice to confirm the name of a visiting team before she would let anyone into her home. A community visit clashed with a family outing on 2026-06-21 and she asked for future visits to be confirmed by telephone; on 2026-09-03 she asked for a paper list of the teams involved and a number for rearranging visits.",
+  "currentStage": "assessed",
+  "blockers": ["Visiting teams not confirmed in advance", "No single contact number for rearranging visits", "Offline contact only"],
+  "keyRecords": [
+   { "site": "gp", "id": "r-3760", "kind": "encounter", "status": "completed", "title": "Earlier practice contact", "when": "2026-01-15" },
+   { "site": "gp", "id": "r-3761", "kind": "encounter", "status": "completed", "title": "Follow-up consultation", "when": "2026-06-21" },
+   { "site": "gp", "id": "r-3762", "kind": "encounter", "status": "completed", "title": "Recent practice consultation", "when": "2026-09-03" }
+  ],
+  "suggestedNextActions": ["schedule_visit with the visiting team named in advance", "send_message posted list of teams and a rearranging number"]
+ },
+ {
+  "id": "SIM-015005",
+  "name": "Ada N. Richards",
+  "birthDate": "1939-05-14",
+  "conditions": ["Osteoarthritis"],
+  "needs": ["Offline contact", "letter preferred"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Know which team is visiting and when"],
+  "pathwayType": "New referral awaiting triage",
+  "story": "A new specialist referral (r-3892) was created in the referrals service on 2026-09-12 and is still status 'open' with no triage decision, clinic or date attached. Ada is 87, prefers letters and has no digital contact recorded, so any booking sent by app or SMS will not reach her.",
+  "currentStage": "referred",
+  "blockers": ["Referral open, not yet triaged", "Letter-only contact route"],
+  "keyRecords": [
+   { "site": "referrals", "id": "r-3892", "kind": "referral", "status": "open", "title": "New specialist referral", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["share_record triage the referral and confirm the receiving team", "send_message posted appointment letter", "book_appointment local clinic slot"]
+ },
+ {
+  "id": "SIM-028263",
+  "name": "Edith U. Edwards",
+  "birthDate": "1958-02-24",
+  "conditions": ["Hypertension"],
+  "needs": ["Step-free access", "SMS preferred"],
+  "goals": ["Understand the next step", "Avoid unnecessary travel", "Attend locally in an accessible room"],
+  "pathwayType": "Prescription awaiting pharmacy review",
+  "story": "A new prescription (r-3948) reached the pharmacy on 2026-09-12 and is still status 'open' — not reviewed, approved or dispensed. Edith prefers SMS and needs an accessible room, so she has had no confirmation of whether to collect and from where.",
+  "currentStage": "treated",
+  "blockers": ["Prescription not yet reviewed by the pharmacy", "No collection confirmation sent"],
+  "keyRecords": [
+   { "site": "pharmacy", "id": "r-3948", "kind": "prescription", "status": "open", "title": "New prescription awaiting review", "when": "2026-09-12" }
+  ],
+  "suggestedNextActions": ["send_message SMS when the prescription is ready", "book_appointment step-free blood pressure review"]
+ }
+]

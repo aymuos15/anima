@@ -92,7 +92,31 @@ function buildMedicines(events: PathwayEvent[], raw: Array<{ site: Site; r: Reso
   return { prescriptions, tests, visits, openTasks, bed, attendance, stage, blockers }
 }
 
-export async function buildPathway(patientId: string): Promise<Pathway> {
+const CACHE_MS = Number(process.env.PATHWAY_CACHE_MS ?? 90000)
+const cache = new Map<string, { at: number; value: Pathway }>()
+const inflight = new Map<string, Promise<Pathway>>()
+
+export function invalidatePathways(patientId?: string) {
+  if (patientId) cache.delete(patientId); else cache.clear()
+}
+
+export function cachedPathwayIds() { return [...cache.keys()] }
+
+export async function buildPathway(patientId: string, opts: { fresh?: boolean } = {}): Promise<Pathway> {
+  const hit = cache.get(patientId)
+  if (hit && !opts.fresh && Date.now() - hit.at < CACHE_MS) return hit.value
+  const running = inflight.get(patientId)
+  if (running) return running
+  const p = fetchPathway(patientId).then((value) => {
+    // only cache complete results so an outage never sticks
+    if (!value.errors.length) cache.set(patientId, { at: Date.now(), value })
+    return value
+  }).finally(() => inflight.delete(patientId))
+  inflight.set(patientId, p)
+  return p
+}
+
+async function fetchPathway(patientId: string): Promise<Pathway> {
   const errors: string[] = []
   const [patientRes, ...views] = await Promise.all([
     sim.patients(patientId).catch((e) => { errors.push(`patients: ${e.message}`); return null }),

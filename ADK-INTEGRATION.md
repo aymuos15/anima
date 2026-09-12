@@ -113,6 +113,39 @@ Changing the agent's tools changes its fingerprint, so old sessions return `pipe
 
 Time: nothing new happens until the clock moves. `POST /api/clock/advance {minutes}` on the server wraps `/api/clock`; the Ctrl+K palette has "Advance simulation clock 2 hours", which advances, re-renders the pathway and asks the agent to re-check the records.
 
+## Operations console (admin.html)
+
+`admin.html` is the staff-facing, full-page console: left nav (Overview, Capacity, Blocked and waiting, Cohort, Patients, featured patients), centre content, and a chat panel on the right backed by `admin_agent` (`POST /api/admin/chat`). The admin agent has every read and write tool plus `get_overview` (clock, capacity, beds/robots/theatre lists, every waiting or rejected record), `scan_patients`, `list_example_patients` (from `data/examples.json`) and a yielding `advance_clock`. Writes and clock advances show as Approve/Decline chips. `GET /api/admin/overview` and `GET /api/admin/patients` feed the views; patient pages reuse the pathway graph from `sim.html`.
+
+## Performance
+
+Building a pathway is 8 simulator calls at 2–7 s each, so `pathway.ts` caches complete results for 90 s (`PATHWAY_CACHE_MS`), dedupes concurrent builds, and never caches a result that had site errors. The server prefetches the six featured patients at startup and every 80 s, and every write tool or clock advance invalidates the cache. GET timeout is 15 s (`SIM_GET_TIMEOUT_MS`); `?fresh=1` on the pathway endpoint bypasses the cache.
+
+## Example patients
+
+`agent/data/examples.json` (16 patients, mined by a research agent; see `PATHWAY-EXAMPLES.md`) adds pathway types the featured six do not cover: digital access, genomic uncertain result, wearable not syncing, care package funding, unanswered screening, Pharmacy First, unconfirmed post-surgical follow-up, failed contact ladders, discharge letter in draft, accessible-information need, home visiting, referral awaiting triage, prescription awaiting pharmacy review. They appear in the console's Patients view, in the admin agent's `list_example_patients`, and in the patient app's Ctrl+K switcher. Finding from the mining: only 218 of the 50,000 registered patients own any record, and the dramatic record kinds are concentrated on SIM-000001 to SIM-000008.
+
+## Run on another machine (no Codex)
+
+The Codex proxy is only one way to get a model. Choose by environment:
+
+```bash
+git clone <repo> && cd anima/agent && npm install
+# copy the sim key(s): key-agent.txt (agent world). Never commit them.
+
+# Option A: Gemini (AI Studio key)
+MODEL_PROVIDER=gemini GEMINI_API_KEY=... SIM_KEY=$(cat key-agent.txt) npm run server
+
+# Option B: OpenAI platform key
+MODEL_PROVIDER=openai OPENAI_API_KEY=sk-... MODEL=gpt-5.6-luna SIM_KEY=$(cat key-agent.txt) npm run server
+
+# Option C (this machine only): ChatGPT OAuth via the proxy
+npm run proxy &
+OPENAI_BASE_URL=http://127.0.0.1:8788/v1 OPENAI_API_KEY=local SIM_KEY=$(cat key-agent.txt) npm run server
+```
+
+Defaults: `MODEL_PROVIDER` is inferred (gemini if only `GEMINI_API_KEY` is set); `MODEL` defaults to `gemini-2.5-flash` or `gpt-5.6-luna`. Then open `http://127.0.0.1:8790/admin.html` (console) or `/` (patient app). `PORT=` changes the port; `ADK_STORE=memory` avoids SQLite. The pages are plain static files served by the same process, so nothing else needs installing. Requires Node 22.
+
 ## Cohort dataset
 
 `agent/build-dataset.ts` pulls every patient with one condition (default `Arthritis`, 86 patients) through `buildPathway`, and writes `agent/data/cohort.json`: per patient the stage reached, days between stage transitions, waiting days and blockers; per condition the stage counts, median/min/max transition days, common blockers and needs. The `get_similar_pathways` tool reads it so the agent can answer "how long does this usually take" with figures and the synthetic-data caveat. Rebuild with `SIM_KEY=$(cat key-agent.txt) npx tsx build-dataset.ts` (`COHORT_CONDITION=` to change condition).

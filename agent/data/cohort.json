@@ -1,0 +1,2280 @@
+{
+ "builtAt": "2026-09-12T12:57:03.631Z",
+ "condition": "Arthritis",
+ "source": "sim.animahacks.com synthetic world",
+ "patients": [
+  {
+   "id": "SIM-000015",
+   "conditions": [
+    "Asthma",
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 129,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000023",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting",
+    "discharged"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 119
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 119,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "discharge-summary",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000046",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 167,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000032",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 117,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000047",
+   "conditions": [
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 164,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000048",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [
+    "Offline contact",
+    "Carer involvement"
+   ],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 237,
+   "eventCount": 6,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000050",
+   "conditions": [
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 76,
+   "eventCount": 2,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000062",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 127
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 127,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000052",
+   "conditions": [
+    "Asthma",
+    "Diabetes",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "discharged",
+   "stagesReached": [
+    "assessed",
+    "discharged"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 70,
+   "eventCount": 2,
+   "kinds": [
+    "encounter",
+    "discharge-summary"
+   ]
+  },
+  {
+   "id": "SIM-000065",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 127,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000070",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 123
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 123,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000071",
+   "conditions": [
+    "Asthma",
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [
+    "SMS preferred",
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 122,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000091",
+   "conditions": [
+    "Diabetes",
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 46,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000093",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 135,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000092",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Step-free access"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 122
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 122,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000098",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Step-free access",
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 83,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000099",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 105
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 105,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000103",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 131,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000105",
+   "conditions": [
+    "Asthma",
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000108",
+   "conditions": [
+    "Diabetes",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Transport"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 160
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 160,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000111",
+   "conditions": [
+    "Diabetes",
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 180,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000113",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 175,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000115",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000142",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 44,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000150",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Offline contact"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 108
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 108,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000168",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 49,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000159",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 58,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000170",
+   "conditions": [
+    "Diabetes",
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 104,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000183",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 199,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000178",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 111
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 111,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000200",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 61,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000201",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 188,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000210",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 52,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000217",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 28,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000213",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 122,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000227",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 178,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000234",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 134,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000235",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 107
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 107,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000241",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 175,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000252",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000256",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter",
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 53,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000253",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 194,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000257",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 130,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000259",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 183,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000261",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000268",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Transport"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 100,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000281",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 161,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000283",
+   "conditions": [
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [
+    "Interpreter",
+    "Offline contact"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 123
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 123,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000284",
+   "conditions": [
+    "Diabetes",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 123,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000288",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 258
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 258,
+   "eventCount": 6,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000306",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 147
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 147,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000310",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000311",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 25,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000316",
+   "conditions": [
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 45,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000317",
+   "conditions": [
+    "Asthma",
+    "Hypertension",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Interpreter",
+    "SMS preferred"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 148,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000326",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter",
+    "Transport"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 129,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000333",
+   "conditions": [
+    "Asthma",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 186,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000334",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Transport"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 171,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000336",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Interpreter",
+    "Transport"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 29,
+   "eventCount": 2,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000347",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Step-free access"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 208
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 208,
+   "eventCount": 5,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000348",
+   "conditions": [
+    "Asthma",
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000349",
+   "conditions": [
+    "Hypertension",
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [
+    "Interpreter",
+    "Carer involvement"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 116
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 116,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000352",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "SMS preferred",
+    "Carer involvement"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 82
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 82,
+   "eventCount": 2,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000364",
+   "conditions": [
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 153
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 153,
+   "eventCount": 4,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000371",
+   "conditions": [
+    "Asthma",
+    "Diabetes",
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 87,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000378",
+   "conditions": [
+    "Asthma",
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Interpreter",
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 157,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000380",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000398",
+   "conditions": [
+    "Hypertension",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 57
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 57,
+   "eventCount": 2,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000406",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 263
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 263,
+   "eventCount": 6,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000414",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 100,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000416",
+   "conditions": [
+    "Hypertension",
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000417",
+   "conditions": [
+    "Asthma",
+    "Hypertension",
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Interpreter",
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 130,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000423",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "Step-free access",
+    "Carer involvement"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 103
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 103,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000426",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 177,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000429",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 189,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000442",
+   "conditions": [
+    "Asthma",
+    "Arthritis"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 136,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000445",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 112
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 112,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000446",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "Interpreter",
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000458",
+   "conditions": [
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 175,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000459",
+   "conditions": [
+    "Arthritis",
+    "CKD"
+   ],
+   "needs": [
+    "SMS preferred",
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 192,
+   "eventCount": 5,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000464",
+   "conditions": [
+    "Asthma",
+    "Diabetes",
+    "Arthritis"
+   ],
+   "needs": [
+    "SMS preferred"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 0,
+   "eventCount": 1,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000471",
+   "conditions": [
+    "Arthritis"
+   ],
+   "needs": [],
+   "currentStage": "waiting",
+   "stagesReached": [
+    "assessed",
+    "waiting"
+   ],
+   "transitionsDays": {
+    "assessed->waiting": 127
+   },
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 127,
+   "eventCount": 3,
+   "kinds": [
+    "encounter",
+    "task"
+   ]
+  },
+  {
+   "id": "SIM-000494",
+   "conditions": [
+    "Arthritis",
+    "Heart failure"
+   ],
+   "needs": [
+    "Carer involvement"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 90,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000499",
+   "conditions": [
+    "Arthritis",
+    "CKD",
+    "Heart failure"
+   ],
+   "needs": [],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 138,
+   "eventCount": 4,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000506",
+   "conditions": [
+    "Hearing loss",
+    "Arthritis"
+   ],
+   "needs": [
+    "Written instructions",
+    "Step-free access"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 231,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  },
+  {
+   "id": "SIM-000511",
+   "conditions": [
+    "Arthritis",
+    "Frailty"
+   ],
+   "needs": [
+    "Home visit",
+    "Offline contact"
+   ],
+   "currentStage": "assessed",
+   "stagesReached": [
+    "assessed"
+   ],
+   "transitionsDays": {},
+   "blockers": [],
+   "waitingDays": null,
+   "spanDays": 231,
+   "eventCount": 3,
+   "kinds": [
+    "encounter"
+   ]
+  }
+ ],
+ "byCondition": {
+  "Asthma": {
+   "patients": 24,
+   "stageNow": {
+    "discharged": 3,
+    "assessed": 19,
+    "waiting": 2
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 2,
+     "median": 109,
+     "min": 107,
+     "max": 111
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Carer involvement",
+     "count": 4
+    },
+    {
+     "item": "SMS preferred",
+     "count": 4
+    },
+    {
+     "item": "Interpreter",
+     "count": 3
+    },
+    {
+     "item": "Offline contact",
+     "count": 2
+    },
+    {
+     "item": "Step-free access",
+     "count": 2
+    }
+   ]
+  },
+  "Diabetes": {
+   "patients": 13,
+   "stageNow": {
+    "discharged": 2,
+    "assessed": 9,
+    "waiting": 2
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 2,
+     "median": 157,
+     "min": 153,
+     "max": 160
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "SMS preferred",
+     "count": 2
+    },
+    {
+     "item": "Carer involvement",
+     "count": 1
+    },
+    {
+     "item": "Offline contact",
+     "count": 1
+    },
+    {
+     "item": "Transport",
+     "count": 1
+    },
+    {
+     "item": "Interpreter",
+     "count": 1
+    }
+   ]
+  },
+  "Arthritis": {
+   "patients": 86,
+   "stageNow": {
+    "discharged": 7,
+    "waiting": 21,
+    "assessed": 58
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 21,
+     "median": 122,
+     "min": 57,
+     "max": 263
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Carer involvement",
+     "count": 17
+    },
+    {
+     "item": "Interpreter",
+     "count": 12
+    },
+    {
+     "item": "SMS preferred",
+     "count": 10
+    },
+    {
+     "item": "Step-free access",
+     "count": 10
+    },
+    {
+     "item": "Offline contact",
+     "count": 9
+    }
+   ]
+  },
+  "Hypertension": {
+   "patients": 19,
+   "stageNow": {
+    "discharged": 3,
+    "assessed": 14,
+    "waiting": 2
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 2,
+     "median": 87,
+     "min": 57,
+     "max": 116
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Interpreter",
+     "count": 6
+    },
+    {
+     "item": "Carer involvement",
+     "count": 4
+    },
+    {
+     "item": "Step-free access",
+     "count": 3
+    },
+    {
+     "item": "Offline contact",
+     "count": 2
+    },
+    {
+     "item": "SMS preferred",
+     "count": 1
+    }
+   ]
+  },
+  "CKD": {
+   "patients": 23,
+   "stageNow": {
+    "discharged": 2,
+    "assessed": 17,
+    "waiting": 4
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 4,
+     "median": 120,
+     "min": 107,
+     "max": 160
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Step-free access",
+     "count": 3
+    },
+    {
+     "item": "Transport",
+     "count": 3
+    },
+    {
+     "item": "Interpreter",
+     "count": 3
+    },
+    {
+     "item": "Carer involvement",
+     "count": 2
+    },
+    {
+     "item": "SMS preferred",
+     "count": 2
+    }
+   ]
+  },
+  "Heart failure": {
+   "patients": 25,
+   "stageNow": {
+    "discharged": 1,
+    "waiting": 6,
+    "assessed": 18
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 6,
+     "median": 119,
+     "min": 82,
+     "max": 208
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Interpreter",
+     "count": 5
+    },
+    {
+     "item": "Step-free access",
+     "count": 4
+    },
+    {
+     "item": "SMS preferred",
+     "count": 4
+    },
+    {
+     "item": "Carer involvement",
+     "count": 4
+    },
+    {
+     "item": "Offline contact",
+     "count": 1
+    }
+   ]
+  },
+  "Hearing loss": {
+   "patients": 1,
+   "stageNow": {
+    "assessed": 1
+   },
+   "transitionsDays": {},
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Written instructions",
+     "count": 1
+    },
+    {
+     "item": "Step-free access",
+     "count": 1
+    }
+   ]
+  },
+  "Frailty": {
+   "patients": 1,
+   "stageNow": {
+    "assessed": 1
+   },
+   "transitionsDays": {},
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Home visit",
+     "count": 1
+    },
+    {
+     "item": "Offline contact",
+     "count": 1
+    }
+   ]
+  },
+  "all": {
+   "patients": 86,
+   "stageNow": {
+    "discharged": 7,
+    "waiting": 21,
+    "assessed": 58
+   },
+   "transitionsDays": {
+    "assessed->waiting": {
+     "n": 21,
+     "median": 122,
+     "min": 57,
+     "max": 263
+    }
+   },
+   "withBlockers": 0,
+   "commonBlockers": [],
+   "commonNeeds": [
+    {
+     "item": "Carer involvement",
+     "count": 17
+    },
+    {
+     "item": "Interpreter",
+     "count": 12
+    },
+    {
+     "item": "SMS preferred",
+     "count": 10
+    },
+    {
+     "item": "Step-free access",
+     "count": 10
+    },
+    {
+     "item": "Offline contact",
+     "count": 9
+    }
+   ]
+  }
+ }
+}

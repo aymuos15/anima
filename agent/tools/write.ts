@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { app as App } from '../app.js'
 import { sim, SimError, SITES } from '../sim.js'
+import { invalidatePathways } from '../pathway.js'
 
 // Every write tool yields: the run pauses, the patient answers in the app, finalize runs the sim action only on approval.
 const approval = z.object({
@@ -15,6 +16,7 @@ function declined(note?: string) {
 async function run(site: (typeof SITES)[number], action: Record<string, unknown>) {
   try {
     const result = await sim.action(site, action)
+    invalidatePathways(typeof action.patientId === 'string' ? action.patientId : undefined)
     return { status: 'done' as const, result }
   } catch (e) {
     if (e instanceof SimError && e.status === 409) {
@@ -60,7 +62,7 @@ export function writeTools(app: typeof App) {
     schema: z.object({
       patientId: z.string(),
       sessionId: z.string(),
-      sessionVersion: z.number().int().positive(),
+      sessionVersion: z.number().int().min(1),
       startsAt: z.number().int().describe('Slot start, Unix milliseconds, within the session'),
       startsAtText: z.string().describe('The same time in words for the patient, e.g. Tuesday 23 September, 8:00am'),
       title: z.string().max(120),
@@ -82,7 +84,7 @@ export function writeTools(app: typeof App) {
   const progress_referral = app.tool({
     name: 'progress_referral',
     description: 'Propose moving a referral forward (review, accept or complete) on the referrals service. Read the referral first for its current version. Requires patient approval.',
-    schema: z.object({ patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(), command: z.enum(['review', 'accept', 'complete']), reason: z.string() }),
+    schema: z.object({ patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().min(1), command: z.enum(['review', 'accept', 'complete']), reason: z.string() }),
     yieldSchema: approval,
     finalize: async (ctx) => (ctx.input?.approved
       ? run('referrals', { type: ctx.args.command, patientId: ctx.args.patientId, resourceId: ctx.args.resourceId, expectedVersion: ctx.args.expectedVersion })
@@ -103,10 +105,10 @@ export function writeTools(app: typeof App) {
     name: 'prescription_action',
     description: 'Propose moving a prescription through the pharmacy: link_stock (attach a pharmacy product and quantity so it can be dispensed), review, accept, dispense (deducts stock) or collect. Use the prescription id and its current version from get_patient_pathway medicines. Requires patient approval.',
     schema: z.object({
-      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(),
+      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().min(1),
       command: z.enum(['link_stock', 'review', 'accept', 'dispense', 'collect']),
       productId: z.string().nullable().optional().describe('For link_stock, e.g. pharmacy-product-furosemide'),
-      quantity: z.number().int().positive().nullable().optional().describe('For link_stock, units to supply, e.g. 28'),
+      quantity: z.number().int().min(1).nullable().optional().describe('For link_stock, units to supply, e.g. 28'),
       reason: z.string().describe('One sentence for the patient'),
     }),
     yieldSchema: approval,
@@ -141,7 +143,7 @@ export function writeTools(app: typeof App) {
     name: 'hospital_command',
     description: 'Propose moving the patient\'s hospital attendance forward: assign (needs clinician), assess (needs clinician), refer, admit, or discharge (needs disposition, e.g. "Home with community follow-up"). Use the attendance id and version from get_patient_pathway medicines.attendance. Requires patient approval.',
     schema: z.object({
-      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(),
+      patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().min(1),
       command: z.enum(['assign', 'assess', 'refer', 'admit', 'discharge']),
       clinician: z.string().nullable().optional(), disposition: z.string().nullable().optional(), location: z.string().nullable().optional(),
       reason: z.string().describe('One sentence for the patient'),
@@ -161,7 +163,7 @@ export function writeTools(app: typeof App) {
   const complete_task = app.tool({
     name: 'complete_task',
     description: 'Propose closing an open GP practice task once what it asked for has been arranged (for example monitoring is booked). Use the task id and version from get_patient_pathway medicines.openTasks. Requires patient approval.',
-    schema: z.object({ patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().positive(), reason: z.string().describe('One sentence for the patient') }),
+    schema: z.object({ patientId: z.string(), resourceId: z.string(), expectedVersion: z.number().int().min(1), reason: z.string().describe('One sentence for the patient') }),
     yieldSchema: approval,
     finalize: async (ctx) => (ctx.input?.approved
       ? run('gp', { type: 'complete', patientId: ctx.args.patientId, resourceId: ctx.args.resourceId, expectedVersion: ctx.args.expectedVersion })

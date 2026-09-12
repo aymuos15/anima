@@ -3,8 +3,17 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, extname } from 'node:path'
 import { app } from './app.js'
-import { pathwayAgent, adminAgent, auditHook } from './agents.js'
-import { buildPathway, fmtDate } from './pathway.js'
+import { pathwayAgent, adminAgent, auditHook, MODEL_NAME } from './agents.js'
+import { buildPathway, fmtDate, invalidatePathways } from './pathway.js'
+
+// warm the cache for the featured patients so the console opens instantly
+function prefetch() {
+  let i = 0
+  const next = (): Promise<void> => i < FEATURED.length ? buildPathway(FEATURED[i++]).catch(() => undefined).then(next) : Promise.resolve()
+  next(); next()
+}
+setTimeout(prefetch, 500)
+setInterval(prefetch, 80000)
 import { sim } from './sim.js'
 import { overview, readJson, FEATURED } from './tools/admin.js'
 
@@ -87,7 +96,7 @@ createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname.startsWith('/api/patients/') && url.pathname.endsWith('/pathway')) {
       const id = url.pathname.split('/')[3]
-      const p = await buildPathway(id)
+      const p = await buildPathway(id, { fresh: url.searchParams.has('fresh') })
       json(res, 200, { ...p, nowText: fmtDate(p.now), events: p.events.map((e) => ({ ...e, when: fmtDate(e.createdAt) })) })
       return
     }
@@ -99,7 +108,10 @@ createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/api/clock/advance') {
       const body = await readBody(req)
-      json(res, 200, await sim.advance(Number(body.minutes ?? 60)))
+      const r = await sim.advance(Number(body.minutes ?? 60))
+      invalidatePathways()
+      prefetch()
+      json(res, 200, r)
       return
     }
 
@@ -116,4 +128,4 @@ createServer(async (req, res) => {
     console.error(e)
     json(res, 500, { error: String(e) })
   }
-}).listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${process.env.MODEL ?? 'gpt-5.6-luna'} via ${process.env.OPENAI_BASE_URL ?? 'api.openai.com'})`))
+}).listen(PORT, '127.0.0.1', () => console.log(`[server] http://127.0.0.1:${PORT}/  (model ${MODEL_NAME} via ${process.env.MODEL_PROVIDER ?? 'auto'} ${process.env.OPENAI_BASE_URL ?? ''})`))

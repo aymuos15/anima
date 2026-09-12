@@ -1,7 +1,4 @@
 key.txt
-
-# Local simulation/admin UI and generated cohort data
-sim.html
-admin.html
-agent/tools/admin.ts
-agent/data/
+agent/key-agent.txt
+agent/sessions.db*
+node_modules/

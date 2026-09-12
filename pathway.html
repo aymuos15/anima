@@ -183,6 +183,10 @@
     { id: 'SIM-000001', name: 'Amira Khan', type: 'Medicines and discharge' }
   ];
   var RX_STAGES = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
+  // extend the demo switcher with the mined example patients
+  fetch('/api/admin/patients').then(function (r) { return r.json(); }).then(function (rows) {
+    rows.filter(function (p) { return p.source === 'example'; }).forEach(function (p) { PATIENTS.push({ id: p.id, name: p.name, type: p.pathwayType }); });
+  }).catch(function () {});
 
   var STAGES = [
     ['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pathway graph - sim</title>
+<style>
+  :root { --blue:#005EB8; --dark:#003087; --text:#212B32; --muted:#4C6272; --line:#D8DDE0; --bg:#F0F4F5; --orange:#ED8B00; --red:#D5281B; --green:#007F3B; --white:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Frutiger W01",Arial,Helvetica,sans-serif; color:var(--text); background:var(--bg); }
+  header { background:var(--blue); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:20px; margin:0; }
+  header .patients { display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+  header button { font:inherit; font-size:14px; padding:6px 12px; border-radius:4px; border:2px solid #fff; background:transparent; color:#fff; cursor:pointer; }
+  header button[aria-pressed=true] { background:#fff; color:var(--blue); font-weight:700; }
+  main { display:grid; grid-template-columns: 1fr 360px; gap:20px; padding:20px 24px; max-width:1400px; margin:0 auto; }
+  .panel { background:#fff; border:1px solid var(--line); padding:16px; }
+  .panel h2 { font-size:16px; margin:0 0 10px; }
+  svg { width:100%; height:auto; display:block; }
+  .node rect { fill:#fff; stroke:var(--line); stroke-width:2; rx:6; }
+  .node text { font-size:13px; fill:var(--muted); }
+  .node .count { font-size:11px; }
+  .node.reached rect { stroke:var(--blue); }
+  .node.reached text { fill:var(--text); }
+  .node.current rect { stroke:var(--orange); stroke-width:3; fill:#FFF4E5; }
+  .node.current text { fill:#6E3619; font-weight:700; }
+  .node.blocked rect { stroke:var(--red); stroke-width:3; fill:#FBE9E7; }
+  .node.blocked text { fill:#6B0E0E; font-weight:700; }
+  .edge { stroke:var(--line); stroke-width:3; fill:none; }
+  .edge.on { stroke:var(--blue); }
+  .lane { font-size:12px; fill:var(--muted); }
+  .legend { display:flex; gap:14px; font-size:12px; color:var(--muted); margin-top:8px; flex-wrap:wrap; }
+  .legend span::before { content:""; display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-radius:3px; margin-right:5px; vertical-align:-2px; background:#fff; }
+  .legend .r::before { border-color:var(--blue); } .legend .c::before { border-color:var(--orange); background:#FFF4E5; } .legend .b::before { border-color:var(--red); background:#FBE9E7; }
+  .meta { font-size:14px; color:var(--muted); margin:0 0 12px; }
+  .blockers li { color:#6B0E0E; }
+  ul { padding-left:18px; margin:0 0 12px; }
+  li { font-size:14px; margin-bottom:4px; }
+  .events { max-height:420px; overflow:auto; border-top:1px solid var(--line); }
+  .events div { display:grid; grid-template-columns:110px 70px 1fr 80px; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px; }
+  .events .k { color:var(--muted); }
+  .st { font-weight:700; }
+  .st.waiting,.st.open,.st.scheduled { color:#6E3619; } .st.rejected { color:#6B0E0E; } .st.completed,.st.sent,.st.collected,.st.dispensed,.st.approved,.st.discharged { color:#00401E; } .st.booked,.st.inpatient { color:#003078; }
+  .note { font-size:12px; color:var(--muted); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Pathway graph</h1>
+  <span class="note" style="color:#fff;opacity:.85">how the same graph lights up for different patients</span>
+  <div class="patients" id="patients"></div>
+</header>
+<main>
+  <section class="panel">
+    <h2 id="title">Select a patient</h2>
+    <p class="meta" id="meta"></p>
+    <svg id="graph" viewBox="0 0 1000 330" role="img" aria-label="Pathway graph"></svg>
+    <div class="legend"><span>not reached</span><span class="r">reached</span><span class="c">current stage</span><span class="b">blocked</span></div>
+    <p class="note">Nodes are stages inferred from record kind and status; the number is how many records map to that stage. The medicines lane appears only when the patient has prescriptions.</p>
+  </section>
+  <aside class="panel">
+    <h2>Blockers</h2>
+    <ul class="blockers" id="blockers"></ul>
+    <h2>Records on the pathway</h2>
+    <div class="events" id="events"></div>
+  </aside>
+</main>
+<script>
+(function () {
+  var PATIENTS = [
+    ['SIM-000007', 'Mohammed Ali'], ['SIM-000504', 'Ben Cooper'], ['SIM-000023', 'George Brown'],
+    ['SIM-000002', 'George Evans'], ['SIM-000070', 'Daniel Williams'], ['SIM-000001', 'Amira Khan']
+  ];
+  var STAGES = [['referred', 'Referred'], ['assessed', 'Assessed'], ['waiting', 'Waiting'], ['treated', 'Treated'], ['discharged', 'Discharged']];
+  var RX = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
+  var svg = document.getElementById('graph');
+  var NS = 'http://www.w3.org/2000/svg';
+  var cache = {};
+
+  function el(tag, attrs, text) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (text != null) n.textContent = text; return n; }
+  function esc(s) { return String(s); }
+  function fmt(ms) { return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); }
+
+  function draw(p) {
+    svg.innerHTML = '';
+    var reached = p.stagesReached || [];
+    var cur = p.currentStage;
+    var blockedStages = {};
+    (p.events || []).forEach(function (e) { if (e.status === 'rejected' || e.status === 'waiting') blockedStages[e.stage] = true; });
+    var counts = {};
+    (p.events || []).forEach(function (e) { counts[e.stage] = (counts[e.stage] || 0) + 1; });
+
+    svg.appendChild(el('text', { x: 20, y: 40, class: 'lane' }, 'Care pathway'));
+    lane(STAGES, 90, reached, cur, blockedStages, counts, 'stage');
+
+    var m = p.medicines;
+    if (m && m.prescriptions && m.prescriptions.length) {
+      svg.appendChild(el('text', { x: 20, y: 200, class: 'lane' }, 'Medicines (' + m.prescriptions.map(function (x) { return x.drug; }).join(', ') + ')'));
+      var rxReached = [], rxIdx = RX.findIndex(function (s) { return s[0] === m.stage; });
+      RX.forEach(function (s, i) { if (i <= rxIdx) rxReached.push(s[0]); });
+      var rxBlocked = {}; (m.blockers || []).forEach(function (b) { if (/dispensed, waiting/.test(b)) rxBlocked.dispensed = true; if (/waiting to be dispensed|not linked/.test(b)) rxBlocked.approved = true; });
+      var rxCounts = {}; rxCounts[m.stage] = m.prescriptions.length;
+      lane(RX, 250, rxReached, m.stage === 'collected' ? null : m.stage, rxBlocked, rxCounts, 'rx');
+      // link from Treated to medicines lane
+      var link = el('path', { d: 'M 640 130 C 640 170, 500 170, 500 210', class: 'edge ' + (rxReached.length ? 'on' : '') });
+      svg.appendChild(link);
+    }
+  }
+
+  function lane(stages, y, reached, cur, blocked, counts, kind) {
+    var x0 = 60, w = 150, gap = 40, h = 60;
+    stages.forEach(function (s, i) {
+      var x = x0 + i * (w + gap);
+      if (i > 0) {
+        var on = reached.indexOf(s[0]) >= 0 && reached.indexOf(stages[i - 1][0]) >= 0;
+        svg.appendChild(el('path', { d: 'M ' + (x - gap) + ' ' + (y + h / 2) + ' L ' + x + ' ' + (y + h / 2), class: 'edge ' + (on ? 'on' : '') }));
+      }
+      var cls = 'node' + (reached.indexOf(s[0]) >= 0 ? ' reached' : '') + (s[0] === cur ? ' current' : '') + (blocked[s[0]] ? ' blocked' : '');
+      var g = el('g', { class: cls, transform: 'translate(' + x + ',' + y + ')' });
+      g.appendChild(el('rect', { width: w, height: h }));
+      g.appendChild(el('text', { x: 14, y: 26 }, s[1]));
+      g.appendChild(el('text', { x: 14, y: 46, class: 'count' }, counts[s[0]] ? counts[s[0]] + ' record' + (counts[s[0]] > 1 ? 's' : '') : ''));
+      svg.appendChild(g);
+    });
+  }
+
+  function render(p) {
+    var pt = p.patient || {};
+    document.getElementById('title').textContent = pt.name + ' (' + pt.id + ')';
+    document.getElementById('meta').textContent = (pt.conditions || []).join(', ') + ' · needs: ' + ((pt.needs || []).join(', ') || 'none') + ' · stage: ' + p.currentStage + ' · sim time ' + (p.nowText || '');
+    draw(p);
+    var b = document.getElementById('blockers'); b.innerHTML = '';
+    var all = (p.blockers || []).concat((p.medicines && p.medicines.blockers) || []);
+    if (!all.length) b.innerHTML = '<li style="color:#00401E">None</li>';
+    all.forEach(function (x) { var li = document.createElement('li'); li.textContent = x; b.appendChild(li); });
+    var ev = document.getElementById('events'); ev.innerHTML = '';
+    (p.events || []).slice().reverse().forEach(function (e) {
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + fmt(e.createdAt) + '</span><span class="k">' + esc(e.site) + '</span><span>' + esc(e.title) + ' <span class="k">(' + esc(e.kind) + ' → ' + esc(e.stage) + ')</span></span><span class="st ' + esc(e.status) + '">' + esc(e.status) + '</span>';
+      ev.appendChild(d);
+    });
+  }
+
+  function load(id) {
+    document.querySelectorAll('#patients button').forEach(function (btn) { btn.setAttribute('aria-pressed', btn.dataset.id === id ? 'true' : 'false'); });
+    document.getElementById('title').textContent = 'Loading ' + id + '…';
+    if (cache[id]) return render(cache[id]);
+    var base = location.protocol === 'file:' ? 'http://127.0.0.1:8790' : '';
+    fetch(base + '/api/patients/' + id + '/pathway').then(function (r) { return r.json(); }).then(function (p) { cache[id] = p; render(p); })
+      .catch(function (e) { document.getElementById('title').textContent = 'Could not load ' + id + ': is the agent server running on 127.0.0.1:8790? (' + e + ')'; });
+  }
+
+  var bar = document.getElementById('patients');
+  PATIENTS.forEach(function (p) {
+    var btn = document.createElement('button'); btn.textContent = p[1]; btn.dataset.id = p[0];
+    btn.addEventListener('click', function () { load(p[0]); });
+    bar.appendChild(btn);
+  });
+  load(PATIENTS[0][0]);
+})();
+</script>
+</body>
+</html>
