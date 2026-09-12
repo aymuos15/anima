@@ -30,6 +30,16 @@
   .step-details summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-top: 2px; transition: transform .15s; }
   .step-details[open] summary::after { transform: rotate(45deg); margin-top: -4px; }
   .step-details summary:focus-visible { outline: 4px solid var(--nhs-yellow); outline-offset: 2px; }
+  .checklist { list-style: none; margin: 0; padding: 0; }
+  .check { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--nhs-border); }
+  .check:last-child { border-bottom: none; }
+  .check .box { flex-shrink: 0; width: 22px; height: 22px; border: 2px solid var(--nhs-secondary-text); border-radius: 4px; background: var(--nhs-white); display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .check--done .box { background: var(--nhs-green); border-color: var(--nhs-green); }
+  .check .box svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 3; }
+  .check .label { font-weight: 700; font-size: 16px; line-height: 1.4; }
+  .check--done .label { color: var(--nhs-secondary-text); text-decoration: line-through; }
+  .check .state { display: block; font-size: 14px; font-weight: 400; color: var(--nhs-secondary-text); text-decoration: none; }
+  .check .state--required { color: #6B0E0E; font-weight: 700; }
   .step-panel { margin-top: 8px; padding-left: 12px; border-left: 4px solid var(--nhs-border); min-height: 8px; }
   .live { font-size: 12px; color: var(--nhs-secondary-text); text-align: center; margin: 0 0 12px; }
 </style>
@@ -232,6 +242,12 @@
     { id: 'SIM-000009', name: 'Thomas Chen', type: 'Asthma, repeat inhalers' },
     { id: 'SIM-000026', name: 'Freya Wilson', type: 'Hypertension, repeat tablets' }
   ];
+  // Preparation checklist. Static for now; not yet derived from records.
+  var CHECKLIST = [
+    { label: 'Blood test', mandatory: true, done: false },
+    { label: 'ECG', mandatory: true, done: true },
+    { label: 'Physiotherapy', mandatory: true, done: false }
+  ];
   var RX_STAGES = [['prescribed', 'Prescribed'], ['approved', 'Approved'], ['dispensed', 'Dispensed'], ['collected', 'Collected']];
   // extend the demo switcher with the mined example patients
   fetch('/api/admin/patients').then(function (r) { return r.json(); }).then(function (rows) {
@@ -241,7 +257,7 @@
   // [backend stage id, label shown to the patient, expandable]
   // The backend infers referred/assessed/waiting/treated/discharged from record kinds; each maps to one patient-facing step.
   var STAGES = [
-    ['referred', 'Referred'], ['assessed', 'Booked'], ['waiting', 'Pre-assessment', true], ['treated', 'Procedure'], ['discharged', 'Post-op care']
+    ['referred', 'Referred'], ['assessed', 'Booked'], ['waiting', 'Preparation', true], ['treated', 'Procedure'], ['discharged', 'Post-op care']
   ];
 
   var STATUS_TAG = { waiting: 'orange', open: 'orange', rejected: 'red', inpatient: 'blue', booked: 'blue', completed: 'green', sent: 'green', available: 'green', approved: 'green', done: 'green', shared: 'green' };
@@ -342,7 +358,19 @@
         var dd = el('details', 'step-details');
         dd.appendChild(el('summary', 'name', s[1]));
         dd.appendChild(detail);
-        dd.appendChild(el('div', 'step-panel'));
+        var panel = el('div', 'step-panel');
+        var list = el('ul', 'checklist');
+        CHECKLIST.forEach(function (c) {
+          var item = el('li', 'check' + (c.done ? ' check--done' : ''));
+          item.appendChild(el('span', 'box', c.done ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>' : ''));
+          var label = el('span', 'label', esc(c.label));
+          if (c.done) label.appendChild(el('span', 'state', 'Completed'));
+          else if (c.mandatory) label.appendChild(el('span', 'state state--required', 'Required'));
+          item.appendChild(label);
+          list.appendChild(item);
+        });
+        panel.appendChild(list);
+        dd.appendChild(panel);
         body.appendChild(dd);
       } else {
         body.appendChild(el('div', 'name', s[1]));
