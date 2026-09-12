@@ -453,3 +453,22 @@
 .board-row.row--orange { background: #fffcf5; }
 .board-row.row--green { background: #f1f8f4; }
 .board-row.row--red { background: #fff4f2; }
+@media (max-width: 760px) {
+  .demo-header { padding: 16px; flex-wrap: wrap; gap: 16px; }
+  .demo-header nav { flex-wrap: wrap; gap: 16px; }
+  .demo-main { padding: 24px 16px; }
+  .demo-title { align-items: flex-start; flex-direction: column; }
+  .console-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .console-toolbar .field { min-width: 0; width: 100%; }
+  .console-toolbar .field input { width: 100%; max-width: none; }
+  .console-toolbar p { margin: 0; }
+  .featured-grid, .console-workspace { grid-template-columns: minmax(0, 1fr); }
+  .care-flow { padding: 16px; overflow-wrap: anywhere; }
+  .care-flow-actions { align-items: flex-start; flex-direction: column; }
+  .timeline-strip { flex-wrap: wrap; }
+  .step-track { min-width: 0; width: 100%; order: -1; flex-basis: 100%; }
+  .console-reply > div { flex-wrap: wrap; }
+  .console-reply input { flex-basis: 100%; }
+  .board-legend { flex-wrap: wrap; }
+  .demo-footer span { float: none; display: block; margin-top: 8px; overflow-wrap: anywhere; }
+}
