@@ -21,7 +21,7 @@ async function request(method: string, path: string, body?: unknown, headers: Re
     method,
     headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(method === 'POST' && path.endsWith('/actions') ? 60000 : 25000),
   })
   const text = await res.text()
   let data: unknown = text

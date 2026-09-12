@@ -368,7 +368,7 @@ createServer(async (req, res) => {
       }
       const state = getState()
       if (url.pathname === '/api/board') {
-        const featuredPatientIds = getFeaturedPatientIds()
+        const featuredPatientIds = getFeaturedPatientIds().filter(id => state.patients[id])
         const ids = [...featuredPatientIds, ...Object.keys(state.patients).filter(id => !featuredPatientIds.includes(id))]
         const rows = ids.map(id => ({ ...state.patients[id], readiness: readiness(state.patients[id]), daysToSurgery: 28 - 7 * state.step }))
         json(res, 200, { runId: state.runId, world: state.world, step: state.step, cohortCount: rows.length, notReadyCount: rows.filter(p => p.readiness < 1).length, featuredPatientIds, rows })

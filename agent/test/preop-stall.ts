@@ -54,6 +54,26 @@ async function api(path: string, body?: unknown) { const r = await fetch(base + 
 try {
   const { classify } = await import('../preop/rules.js'), { assertAllowed } = await import('../imessage.js'), { lintOutbound, conversation } = await import('../preop/agent.js')
   const board = await api('/api/board'), plain = board.rows.find((p: any) => !p.transcript.length && !p.modifiers.length) ?? board.rows.find((p: any) => !p.transcript.length)
+  if (mock) {
+    const patients = sim.patients
+    let release!: () => void, entered!: () => void
+    const blocked = new Promise<void>(resolve => { release = resolve })
+    const preparing = new Promise<void>(resolve => { entered = resolve })
+    sim.patients = async q => { entered(); await blocked; return patients(q) }
+    const resetting = api('/api/demo/reset', {})
+    try {
+      await preparing
+      const during = await api('/api/board')
+      assert.deepEqual(during.featuredPatientIds, [], 'reset must not advertise patients missing from the current world')
+      assert.deepEqual(during.rows, [])
+      assert.equal(during.cohortCount, 0)
+      assert.equal(during.notReadyCount, 0)
+    } finally { sim.patients = patients; release(); await resetting }
+    const after = await api('/api/board')
+    assert.equal(after.rows.length, 2)
+    assert.deepEqual(after.featuredPatientIds, board.featuredPatientIds)
+    console.log('board polling during reset regression passed')
+  }
   const modified = board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId && p.modifiers.includes('add_hba1c')) ?? board.rows.find((p: any) => !p.transcript.length && p.patientId !== plain.patientId)
   assert.ok(plain && modified, 'two unstarted patients required')
   const reply = (patientId: string, text: string) => api('/api/demo/reply', { patientId, text })
