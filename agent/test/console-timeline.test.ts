@@ -29,7 +29,7 @@ test('unbooked +7 is visible, keeps honest no-results guidance across polling, n
 test('due results visibly update checklist, readiness and thread; rewind restores prior view',async()=>{
   const h=harness(true);await h.ready();assert.match(h.el('outcomes').innerHTML,/outcome-bloods/);assert.match(h.el('featured').innerHTML,/0 of 5/)
   await h.click('advance');assert.match(h.el('timeline-feedback').textContent,/1 test result/);assert.match(h.el('featured').innerHTML,/1 of 5/);assert.match(h.el('featured').innerHTML,/width:20%/);assert.match(h.el('featured').innerHTML,/✓ Bloods/);assert.match(h.el('conversations').innerHTML,/blood results are normal/)
-  await h.click('rewind');assert.equal(h.requests[1].body.direction,-1);assert.match(h.el('days-label').textContent,/Week 0/);assert.match(h.el('timeline-feedback').textContent,/restored/i);assert.match(h.el('featured').innerHTML,/0 of 5/);assert.doesNotMatch(h.el('conversations').innerHTML,/blood results are normal/)
+  await h.click('rewind');assert.equal(h.requests[1].body.direction,-1);assert.match(h.el('days-label').textContent,/Week 0/);assert.match(h.el('timeline-feedback').textContent,/restored/i);assert.match(h.el('timeline-feedback').textContent,/simulation date and existing bookings stay advanced/);assert.match(h.el('timeline-feedback').textContent,/Reset demo/);assert.match(h.el('featured').innerHTML,/0 of 5/);assert.doesNotMatch(h.el('conversations').innerHTML,/blood results are normal/)
 })
 
 test('an in-flight old poll cannot replace the successful timeline result',async()=>{
