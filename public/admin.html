@@ -323,7 +323,7 @@
 
   function handle(out) {
     typing(false); busy = false;
-    if (out.error) { addEvent('Error: ' + out.error); return; }
+    if (out.error) { addEvent(/429|quota|RESOURCE_EXHAUSTED/i.test(out.error) ? 'Model rate limit reached. Try again in a minute.' : 'Error: ' + String(out.error).slice(0, 200)); return; }
     sessionId = out.sessionId; pending = (out.yieldedTools || []).slice();
     if (out.text) addTeam(out.text);
     pending.forEach(function (y) {

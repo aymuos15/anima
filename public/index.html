@@ -561,9 +561,17 @@
 
   var pending = [];   // yielded tools awaiting the patient's answer
 
+  function friendlyError(err) {
+    var e = String(err);
+    if (/429|quota|RESOURCE_EXHAUSTED|Too Many Requests/i.test(e)) return 'Your care team is busy right now. Please try again in a minute.';
+    if (/session|pipeline structure/i.test(e)) return 'Your conversation timed out. Please send your message again.';
+    if (/SIM_KEY|API key|GEMINI|OPENAI/i.test(e)) return 'The service is not configured correctly. Please contact the team.';
+    return 'Something went wrong. Please try again.';
+  }
+
   function handleTurn(out) {
     typing(false); busy = false;
-    if (out.error) { addEvent('Something went wrong: ' + out.error); return; }
+    if (out.error) { addEvent(friendlyError(out.error)); return; }
     sessionId = out.sessionId;
     pending = (out.yieldedTools || []).slice();
     if (out.text) {
@@ -596,7 +604,7 @@
     var gen = generation;
     api('/api/chat', { sessionId: sessionId, patientId: patient.id, input: input })
       .then(function (out) { if (gen === generation) handleTurn(out); })
-      .catch(function (e) { if (gen === generation) { typing(false); busy = false; addEvent('Could not reach your care team: ' + e); } });
+      .catch(function (e) { if (gen === generation) { typing(false); busy = false; addEvent('Could not reach your care team. Check your connection and try again.'); } });
   }
 
   function resume(callId, input) {
