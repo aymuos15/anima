@@ -15,9 +15,9 @@ body{margin:0;background:#eef3f7;color:#172b40;font-family:Arial,sans-serif}.han
 <p>Getting ready for your operation</p>
 <select id="patient" aria-label="Patient"><option value="">Loading patients…</option></select>
 <p class="muted" id="patientDetail"></p>
-<div class="controls"><button id="answer" disabled>Answer</button><button id="mute" hidden>Mute</button><button id="end" hidden>End</button></div>
+<div class="controls"><button id="answer" disabled>Answer</button><button id="begin" hidden>Start conversation</button><button id="mute" hidden>Mute</button><button id="end" hidden>End</button></div>
 <p id="status" role="status">Loading…</p>
-<p class="muted">AI-generated voice. Use headphones for a clear conversation.<br>This is a browser conversation.</p>
+<p class="muted" id="audioNote">AI-generated voice. Use headphones for a clear conversation.<br>This is a browser conversation.</p>
 <a href="/console.html">Back to demo console</a>
 <div id="transcript" aria-live="polite"></div>
 <audio id="speech" autoplay></audio>
@@ -26,6 +26,8 @@ body{margin:0;background:#eef3f7;color:#172b40;font-family:Arial,sans-serif}.han
 const $ = id => document.getElementById(id);
 let state, peer, channel, stream, connected = false, busy = false, muted = false, cursor = 0, polling = false, audioUrl;
 let activePatient = '', activeRun = '', generation = 0;
+const phoneRelay = new URLSearchParams(location.search).get('relay') === 'phone';
+let conversationStarted = !phoneRelay;
 const requestedPatient = new URLSearchParams(location.search).get('patient');
 const status = text => $('status').textContent = text;
 async function api(path, body) {
@@ -33,7 +35,7 @@ async function api(path, body) {
   if (!response.ok) { let detail; try { detail = await response.json(); } catch {} throw new Error(detail?.error || `Request failed (${response.status})`); }
   return response;
 }
-function mic() { stream?.getAudioTracks().forEach(track => track.enabled = connected && !busy && !muted); }
+function mic() { stream?.getAudioTracks().forEach(track => track.enabled = connected && conversationStarted && !busy && !muted); }
 function render() {
   const patient = state?.patients[$('patient').value];
   $('patientDetail').textContent = patient ? `${patient.name} · ${patient.procedureLabel}` : 'Start a patient in the demo console first.';
@@ -66,7 +68,7 @@ async function refresh(speakNew = true) {
     state = await (await api('/api/demo/state')).json();
     if (connected && (state.runId !== activeRun || !state.patients[activePatient])) { end(); status('Demo reset. Select the patient again.'); return; }
     render();
-    if (connected && !busy && speakNew) {
+    if (connected && conversationStarted && !busy && speakNew) {
       const turn = generation, entries = state.patients[activePatient].transcript;
       while (cursor < entries.length && connected && turn === generation) {
         const index = cursor++;
@@ -80,7 +82,7 @@ async function refresh(speakNew = true) {
   finally { polling = false; }
 }
 async function inbound(text) {
-  if (!text.trim() || !connected || busy) return;
+  if (!text.trim() || !connected || !conversationStarted || busy) return;
   console.info('[voice] microphone transcription received');
   busy = true; mic(); status('Pre-op team is checking…');
   try {
@@ -91,13 +93,15 @@ async function inbound(text) {
 }
 function end() {
   generation++; connected = false; busy = false;
+  conversationStarted = !phoneRelay;
   $('speech').pause(); $('speech').onended?.();
   channel?.close(); peer?.close(); stream?.getTracks().forEach(track => track.stop());
   if (audioUrl) URL.revokeObjectURL(audioUrl);
-  $('answer').hidden = false; $('answer').disabled = false; $('end').hidden = $('mute').hidden = true; $('patient').disabled = false;
-  $('callLabel').textContent = 'Browser voice · Contact ended'; status('Conversation ended');
+  $('answer').hidden = false; $('answer').disabled = false; $('end').hidden = $('mute').hidden = $('begin').hidden = true; $('patient').disabled = false;
+  $('callLabel').textContent = phoneRelay ? 'Phone relay · Disconnected' : 'Browser voice · Contact ended'; status(phoneRelay ? 'Relay ended. End the phone call in the Phone app.' : 'Conversation ended');
 }
 $('end').onclick = end;
+$('begin').onclick = async () => { if (!connected) return; conversationStarted = true; $('begin').hidden = true; console.info('[voice] operator started phone conversation'); await refresh(); };
 $('mute').onclick = () => { muted = !muted; $('mute').textContent = muted ? 'Unmute' : 'Mute'; mic(); status(muted ? 'Microphone muted' : 'Listening…'); };
 $('patient').onchange = render;
 $('answer').onclick = async () => {
@@ -109,6 +113,19 @@ $('answer').onclick = async () => {
     console.info('[voice] requesting microphone');
     status('Allow microphone access in your browser…');
     stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    stream.getAudioTracks().forEach(track => track.enabled = false);
+    if (phoneRelay) {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      console.info('[voice] relay devices', JSON.stringify(devices.map(({kind,label}) => ({kind,label}))), 'output selection', typeof $('speech').setSinkId);
+      const input = devices.find(device => device.kind === 'audioinput' && device.label.includes('MacBook Pro Microphone'));
+      const output = devices.find(device => device.kind === 'audiooutput' && device.label.includes('BlackHole 2ch'));
+      if (!input || !output || !$('speech').setSinkId) throw new Error('Phone relay needs the built-in microphone and BlackHole 2ch output.');
+      stream.getTracks().forEach(track => track.stop());
+      stream = await navigator.mediaDevices.getUserMedia({audio:{deviceId:{exact:input.deviceId},echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      stream.getAudioTracks().forEach(track => track.enabled = false);
+      await $('speech').setSinkId(output.deviceId);
+      console.info('[voice] phone relay routing', JSON.stringify({input:input.label,output:output.label,returnPath:'Phone speakers to built-in microphone'}));
+    }
     console.info('[voice] microphone acquired', JSON.stringify(stream.getAudioTracks().map(track => ({label:track.label,readyState:track.readyState}))));
     status('Connecting audio…');
     stream.getAudioTracks().forEach(track => track.enabled = false);
@@ -124,10 +141,11 @@ $('answer').onclick = async () => {
     channel.onopen = async () => {
       console.info('[voice] data channel open');
       connected = true; $('answer').hidden = true; $('end').hidden = $('mute').hidden = false; $('patient').disabled = true;
-      $('callLabel').textContent = 'Browser voice · Connected';
+      $('callLabel').textContent = phoneRelay ? 'Phone relay · Audio ready' : 'Browser voice · Connected';
       const entries = state.patients[activePatient].transcript;
       cursor = entries.findLastIndex(entry => entry.from === 'agent'); if (cursor < 0) cursor = entries.length;
-      await refresh();
+      if (phoneRelay) { $('begin').hidden = false; status('Connect the phone call, then start conversation.'); }
+      else await refresh();
     };
     peer.onconnectionstatechange = () => { console.info('[voice] peer connection', peer.connectionState); if (['failed','disconnected'].includes(peer.connectionState)) { end(); status('Audio disconnected. Please reconnect.'); } };
     const offer = await peer.createOffer(); await peer.setLocalDescription(offer);
@@ -138,6 +156,11 @@ $('answer').onclick = async () => {
 };
 (async () => {
   try {
+    if (phoneRelay) {
+      $('callLabel').textContent = 'Phone relay · Operator controls';
+      $('answer').textContent = 'Prepare relay';
+      $('audioNote').textContent = 'AI-generated voice. Phone app: microphone BlackHole 2ch; speakers MacBook Pro Speakers. Keep the Mac in a quiet room. Start conversation only after the person answers.';
+    }
     const available = await (await api('/api/demo/voice/status')).json();
     await refresh(false);
     $('patient').replaceChildren();
