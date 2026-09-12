@@ -4,6 +4,29 @@ Status: approved by Aaryan 14:30. Freeze 16:30. Submission 18:30. Stall 18:30–
 
 This is the spec the development agents build from. It sits on top of what already exists in this repo (`agent/`, `pathway.html`). Nothing here replaces the ADK app, the sim client, the pathway stitcher or the chat handler; it adds a pre-op layer beside them.
 
+## 0. YAGNI. Read this before anything else
+
+This is a four-minute stall demo that runs once, on one MacBook, driven by one presenter, for two hard-coded patients. It is thrown away on Monday. Every line of code is judged by one question: does the §2 script need it to land? If not, do not write it.
+
+Hard rules for every build agent on every track:
+
+- No auth, no users, no sessions beyond the ADK session id, no roles, no permissions.
+- No database beyond the one JSON file in §5 and the ADK's existing SQLite. No migrations, no ORM, no schema versioning.
+- No framework, no bundler, no React, no Tailwind, no build step. Static HTML, the existing `pathway.css`, plain fetch and polling. No WebSockets, no SSE.
+- No generic anything. Two patients, one procedure, five items, the outcomes in §6 and nothing more. Hard-code names, ids, dates and strings where the spec gives them. Do not write a "protocol engine" that could support other procedures.
+- No retries, no queues, no rate limiting, no caching layers, no feature flags, no config system beyond env vars already in use.
+- No input validation beyond what stops the demo crashing. No error pages. Log to console and move on.
+- No tests beyond §13. No test infrastructure, no mocks framework, no coverage.
+- No abstractions for one caller. No interfaces with one implementation. No utilities "for later". If a function is used once, inline it.
+- No refactor of existing files beyond the exact additions the spec names. Do not tidy, rename, reformat or "improve" `pathway.html`, `server.ts`, `write.ts` or anything else on the way through.
+- No docs beyond a five-line "how to run" block in the README. No comments explaining obvious code.
+- No security work. The API key stays in the gitignored file as it is today. The iMessage whitelist is one env var, nothing more.
+- No accessibility, i18n, responsive layout, dark mode, animation or polish that the judge will not see on the stall screen.
+
+If you find yourself writing a class, a plugin system, a registry, a factory, a middleware chain, or a file over 300 lines, stop and delete it. If a track needs something outside this spec to make the script land, post one line in the team channel and wait. Do not build it speculatively.
+
+Done means: the beat in §2 that your track serves plays end to end on the MacBook. Not "production-ready", not "extensible", not "clean".
+
 ## 1. What the demo is
 
 An agent that gets a patient who is already booked for elective surgery ready for theatre: it works through the pre-op checklist with the patient over a real message thread on the patient's own phone, writes every step into the NHS record, reacts correctly to each test result as it arrives, and stops and hands over the moment anything clinical is raised. Two screens beside the patient show the same journey from the patient's side and the clinician's side.
