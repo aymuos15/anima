@@ -3,8 +3,8 @@ import { buildPathway, type Pathway } from '../pathway.js'
 import type { ChecklistItem, Modifier, PatientRun } from './store.js'
 import { readInBatches } from './batch-read.js'
 
-const queries = ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orthopaedic']
-const eligibleCondition = /awaiting elective surgery|\b(?:joints?|knees?|hips?|msk|arthritis|osteoarthritis)\b/i
+const queries = ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orthopaedic', 'musculoskeletal']
+const eligibleCondition = /awaiting elective surgery|\b(?:joints?|knees?|hips?|msk|musculoskeletal|arthritis|osteoarthritis)\b/i
 let featuredPatientIds: string[] = []
 
 function requireCompletePathway(patientId: string, pathway: Pathway): asserts pathway is Pathway & { patient: Patient } {

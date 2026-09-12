@@ -15,7 +15,7 @@ test('live search merges, filters pathways, fills featured preferences without d
   const patients = [person('id-plain'), person('id-blocked'), person('id-need', ['Hip arthritis'], ['Transport']), person('id-diabetes', ['Knee arthritis', 'Diabetes']), person('id-no-event'), person('id-awaiting', ['Awaiting elective surgery']), person('id-unrelated', ['Asthma'])]
   const queries = fixture(t, patients, { 'id-plain': [{ kind: 'referral' }], 'id-blocked': [{ kind: 'theatre-slot', status: 'waiting' }], 'id-need': [{ dueAt: now + 10 * 86400000 }], 'id-diabetes': [{}], 'id-unrelated': [{}] })
   const cohort = await loadCohort()
-  assert.deepEqual(queries.slice(0, 7), ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orthopaedic'])
+  assert.deepEqual(queries.slice(0, 8), ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orthopaedic', 'musculoskeletal'])
   assert.deepEqual(cohort.map(p => p.patientId), ['id-plain', 'id-blocked', 'id-need', 'id-diabetes', 'id-awaiting'])
   assert.deepEqual(getFeaturedPatientIds(), ['id-blocked', 'id-need', 'id-diabetes', 'id-plain'])
   assert.equal(cohort.find(p => p.patientId === 'id-need')!.surgeryDate, '2026-09-22')
@@ -51,6 +51,24 @@ test('search pagination fills forty unique eligible candidates and stops at the 
   assert.equal(cohort.length, 40)
   assert.deepEqual(cohort.map(p => p.patientId), patients.slice(0, 40).map(p => p.id))
   assert.deepEqual(pages, ['/api/sites/gp/patients?q=arthritis&offset=30'])
+})
+
+test('retains a referred patient when live conditions project arthritis as musculoskeletal symptoms', async t => {
+  const referred = person('id-projected')
+  const noReferral = person('id-no-referral', ['Musculoskeletal symptoms', 'Pre-operative assessment in progress'])
+  const unrelated = person('id-unrelated', ['Asthma'])
+  const patients = [referred, noReferral, unrelated]
+  fixture(t, patients, { 'id-projected': [{ kind: 'referral' }], 'id-unrelated': [{ kind: 'referral' }] })
+  t.mock.method(sim, 'patients', async (q: string) => {
+    const items = patients.filter(p => q.startsWith('id-') ? p.id === q : p.conditions.some(c => c.toLowerCase().includes(q.toLowerCase())))
+    return { total: items.length, items }
+  })
+  assert.deepEqual((await loadCohort()).map(p => p.patientId), [referred.id])
+  referred.conditions = ['Musculoskeletal symptoms', 'Pre-operative assessment in progress']
+  const refreshed = await loadCohort()
+  assert.deepEqual(refreshed.map(p => p.patientId), [referred.id])
+  assert.deepEqual(refreshed[0].conditions, referred.conditions)
+  assert.equal(refreshed[0].procedureLabel, 'Musculoskeletal symptoms')
 })
 
 for (const failure of ['timeout', 'truncated']) {
