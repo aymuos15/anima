@@ -1,6 +1,7 @@
 import { sim, type Patient } from '../sim.js'
 import { buildPathway, type Pathway } from '../pathway.js'
 import type { ChecklistItem, Modifier, PatientRun } from './store.js'
+import { readInBatches } from './batch-read.js'
 
 const queries = ['elective', 'surgery', 'arthritis', 'knee', 'hip', 'MSK', 'orthopaedic']
 const eligibleCondition = /awaiting elective surgery|\b(?:joints?|knees?|hips?|msk|arthritis|osteoarthritis)\b/i
@@ -52,8 +53,14 @@ export async function loadCohort(): Promise<PatientRun[]> {
   }
   const candidates = [...candidatesById.values()].slice(0, 40)
   const clock = await sim.clock()
-  const pathways: Pathway[] = []
-  for (const patient of candidates) pathways.push(await buildPathway(patient.id))
+  const startedAt = Date.now()
+  let completed = 0
+  console.info(`[preop cohort] Reading ${candidates.length} patient pathways, up to four concurrently`)
+  const pathways = await readInBatches(candidates, async patient => {
+    const pathway = await buildPathway(patient.id)
+    console.info(`[preop cohort] Read ${++completed}/${candidates.length} in ${Date.now() - startedAt}ms`)
+    return pathway
+  })
   const cohort = candidates.flatMap((patient, index) => {
     const pathway = pathways[index]
     if (pathway.errors.length) console.error(`Pre-op pathway ${patient.id}: ${pathway.errors.join('; ')}`)
